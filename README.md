@@ -4,6 +4,8 @@ A daily calendar for finding good dates and hours by 时家奇门遁甲. A Qimen
 pure, deterministic function of `(instant, method, settings)` — so the whole app
 computes **client-side in a Web Worker**, works offline, and never needs a server.
 
+[**▶ Open in StackBlitz**](https://stackblitz.com/github/josephchng1/QMDJ-Calendar) — installs and runs live from this repo, no local setup.
+
 Built on a **vendored, frozen copy** of the Zhirun chart engine
 (`src/engine/`, from [`josephchng1/QMDJ`](https://github.com/josephchng1/QMDJ)).
 The engine is never edited here; algorithm updates are re-synced deliberately.
