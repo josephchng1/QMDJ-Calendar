@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* ---- Dark + gold design tokens (per spec §9: dark + gold, quality cyan/green/amber/red) ---- */
 :root {
