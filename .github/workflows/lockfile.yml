@@ -1,0 +1,41 @@
+# Generates package-lock.json on real Node and commits it back to main.
+# Why a workflow: the local dev environment has no Node runtime, and a
+# lockfile makes StackBlitz/WebContainer installs fast + deterministic
+# (no-lockfile npm resolution in-browser is minutes of silent work that
+# looks like a hang) and lets CI use `npm ci`.
+# Loop-safe: the lockfile commit doesn't touch package.json, so it does
+# not re-trigger this workflow; the `if changed` guard is belt-and-braces.
+name: Lockfile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - .github/workflows/lockfile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate lockfile
+        run: npm install --package-lock-only --no-audit --no-fund
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- package-lock.json 2>/dev/null && [ -f package-lock.json ] && git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            echo "Lockfile unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: update package-lock.json [lockfile workflow]"
+          git push
