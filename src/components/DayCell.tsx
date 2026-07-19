@@ -1,8 +1,8 @@
 import type { DaySummary } from '../calendar/summary.ts';
-import { bandColor, BAND_LABEL } from '../calendar/bands.ts';
+import { bandColor, BAND_LABEL, scorePercent } from '../calendar/bands.ts';
 
-/** One calendar day: date number, a 12-segment quality bar (one per 时辰),
- *  and a faint tint keyed to the day's aggregate band. */
+/** One calendar day: date number, an at-a-glance score, a 12-segment quality bar
+ *  (one per 时辰), and a faint tint keyed to the day's aggregate band. */
 export function DayCell({
   day, isToday, isSelected, onClick,
 }: {
@@ -12,6 +12,7 @@ export function DayCell({
   onClick: () => void;
 }) {
   const tint = bandColor(day.dayBand);
+  const pct = scorePercent(day.dayScore);
   return (
     <button
       onClick={onClick}
@@ -20,18 +21,18 @@ export function DayCell({
         background: 'var(--bg-cell)',
         border: `1px solid ${isSelected ? 'var(--gold-dim)' : 'var(--border)'}`,
         boxShadow: isSelected ? '0 0 0 1px var(--gold-dim)' : undefined,
-        minHeight: 58,
+        minHeight: 62,
       }}
-      title={`${day.m}/${day.d} · ${BAND_LABEL[day.dayBand]}`}
+      title={`${day.m}/${day.d} · ${BAND_LABEL[day.dayBand]} · ${pct}`}
     >
-      <div className="flex items-center justify-between">
-        <span
-          className="text-xs font-semibold"
-          style={{ color: isToday ? 'var(--gold)' : 'var(--text)' }}
-        >
-          {day.d}
+      <div className="flex items-center justify-between leading-none">
+        <span className="text-xs font-semibold"
+              style={{ color: isToday ? 'var(--gold)' : 'var(--text)' }}>
+          {day.d}{isToday && <span className="text-[9px] ml-0.5">今</span>}
         </span>
-        {isToday && <span className="text-[9px]" style={{ color: 'var(--gold)' }}>今</span>}
+        <span className="text-[13px] font-bold tabular-nums" style={{ color: tint }}>
+          {pct}
+        </span>
       </div>
 
       {/* 12-时辰 quality bar */}

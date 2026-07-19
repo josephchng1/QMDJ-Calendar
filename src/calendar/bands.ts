@@ -16,3 +16,9 @@ export function shichenWindow(branchIndex: number): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(start)}–${p(end)}`;
 }
+
+/** Map a raw score (~[-6,+6]) to a 0–100 percentage for at-a-glance display. */
+export function scorePercent(raw: number): number {
+  const pct = Math.round(((raw + 6) / 12) * 100);
+  return Math.max(0, Math.min(100, pct));
+}

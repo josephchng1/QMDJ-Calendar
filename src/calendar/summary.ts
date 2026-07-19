@@ -4,7 +4,7 @@
 // selected chart on demand via computeChart().
 import { buildChart } from '../engine/index.ts';
 import { BRANCHES } from '../engine/ganzhi.ts';
-import { scoreHour, dayBand, type Band } from './scoring.ts';
+import { scoreHour, dayBand, meanScore, type Band } from './scoring.ts';
 
 export interface CalendarOptions {
   method?: 'zhirun' | 'chaibu';
@@ -30,6 +30,7 @@ export interface HourRating {
 export interface DaySummary {
   y: number; m: number; d: number;
   hours: HourRating[]; // 12
+  dayScore: number;   // mean of the 12 hour scores (raw)
   dayBand: Band;
   bestIndex: number;   // index into hours of the best 时辰
 }
@@ -58,10 +59,12 @@ export function computeDaySummary(y: number, m: number, d: number, opts: Calenda
   let bestIndex = 0;
   for (let i = 1; i < hours.length; i++) if (hours[i].score > hours[bestIndex].score) bestIndex = i;
 
+  const scores = hours.map((h) => h.score);
   return {
     y, m, d,
     hours,
-    dayBand: dayBand(hours.map((h) => h.score)),
+    dayScore: meanScore(scores),
+    dayBand: dayBand(scores),
     bestIndex,
   };
 }

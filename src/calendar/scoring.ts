@@ -101,3 +101,9 @@ export function dayBand(hourScores: number[]): Band {
   const mean = hourScores.reduce((a, s) => a + s, 0) / hourScores.length;
   return bandOf(mean);
 }
+
+/** Mean of a set of hour-scores — the day-level aggregate used for the calendar. */
+export function meanScore(scores: number[]): number {
+  if (!scores.length) return 0;
+  return scores.reduce((a, s) => a + s, 0) / scores.length;
+}

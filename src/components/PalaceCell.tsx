@@ -1,11 +1,32 @@
+import type { ReactNode } from 'react';
 import type { Palace } from '../types.ts';
 import { gateColor, starColor, spiritColor, stemColor, GATE_META, QUALITY_VAR } from '../qmdata.ts';
 
 // One 九宫 cell. Element order top→bottom follows spec §9: 神 → 门 → 星 → 干(天/地) → 支markers.
-export function PalaceCell({ palace }: { palace: Palace }) {
+// The 时干 (hour stem) is boxed wherever it appears on 天盘/地盘 (feature §10.5).
+export function PalaceCell({ palace, hourStem }: { palace: Palace; hourStem?: string }) {
   const isCentre = palace.palace === 5;
   const borderQ = palace.gate && GATE_META[palace.gate] ? GATE_META[palace.gate].quality : 'neutral';
   const borderColor = QUALITY_VAR[borderQ];
+
+  // Box a stem when it is the hour stem — marks the acting hour on both plates.
+  const stemNode = (s: string, extra?: string): ReactNode => {
+    const boxed = !!hourStem && s === hourStem;
+    return (
+      <span
+        className={extra}
+        style={{
+          color: stemColor(s),
+          ...(boxed
+            ? { border: '1.5px solid var(--gold)', borderRadius: 4, padding: '0 3px',
+                boxShadow: '0 0 8px rgba(212,175,55,0.35)' }
+            : {}),
+        }}
+      >
+        {s}
+      </span>
+    );
+  };
 
   const markers: { label: string; color: string }[] = [];
   if (palace.isZhiFu) markers.push({ label: '符', color: 'var(--gold)' });
@@ -18,8 +39,8 @@ export function PalaceCell({ palace }: { palace: Palace }) {
       <div className="cell relative flex flex-col items-center justify-center p-2 aspect-square"
            style={{ background: 'var(--bg-cell-2)', border: `1px solid var(--border)`, borderRadius: 10 }}>
         <div className="text-xs" style={{ color: 'var(--text-dim)' }}>中五宫</div>
-        <div className="text-2xl font-semibold mt-1" style={{ color: stemColor(palace.diPanStem) }}>
-          {palace.diPanStem || '—'}
+        <div className="text-2xl font-semibold mt-1">
+          {palace.diPanStem ? stemNode(palace.diPanStem) : '—'}
         </div>
       </div>
     );
@@ -59,11 +80,9 @@ export function PalaceCell({ palace }: { palace: Palace }) {
       {/* 干: 天盘 over 地盘 */}
       <div className="flex items-end justify-between mt-1">
         <div className="flex gap-1 text-lg font-semibold">
-          {palace.tianPanStems.map((s, i) => (
-            <span key={i} style={{ color: stemColor(s) }}>{s}</span>
-          ))}
+          {palace.tianPanStems.map((s, i) => <span key={i}>{stemNode(s)}</span>)}
         </div>
-        <div className="text-base" style={{ color: stemColor(palace.diPanStem) }}>{palace.diPanStem}</div>
+        <div className="text-base">{stemNode(palace.diPanStem)}</div>
       </div>
       <div className="flex justify-between text-[9px] mt-[2px]" style={{ color: 'var(--text-dim)' }}>
         <span>天盘</span><span>地盘 {luoshuName(palace.palace)}</span>

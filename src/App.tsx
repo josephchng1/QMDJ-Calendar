@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { CalendarOptions, DaySummary } from './calendar/summary.ts';
 import { useMonth } from './hooks/useMonth.ts';
+import { useDay } from './hooks/useDay.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
 import { Legend } from './components/Legend.tsx';
@@ -9,9 +10,9 @@ import { BAND_LABEL, bandColor } from './calendar/bands.ts';
 type Method = 'zhirun' | 'chaibu';
 
 interface UiState {
-  year: number; month: number;               // displayed month (1..12)
+  year: number; month: number;                     // displayed month (1..12)
   sel: { y: number; m: number; d: number } | null; // selected day
-  hour: number;                               // selected 时辰 index 0..11
+  hour: number;                                     // selected 时辰 index 0..11
   method: Method; spiritVariant: boolean; lateZiNextDay: boolean;
 }
 
@@ -28,7 +29,7 @@ function initialState(): UiState {
   const d = p.get('d');
   if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
     sel = { y: +d.slice(0, 4), m: +d.slice(5, 7), d: +d.slice(8, 10) };
-    year = sel.m === month ? year : sel.y; month = sel.m; year = sel.y;
+    year = sel.y; month = sel.m;
   }
 
   return {
@@ -53,6 +54,9 @@ export default function App() {
   }), [ui.method, ui.spiritVariant, ui.lateZiNextDay]);
 
   const { month, loading } = useMonth(ui.year, ui.month, options);
+  // Selected day computed independently of the loaded month, so ±1-day nav works
+  // cleanly across month boundaries (feature §10.4).
+  const { day: selectedDay } = useDay(ui.sel?.y ?? null, ui.sel?.m ?? 1, ui.sel?.d ?? 1, options);
 
   // deep-link sync
   useEffect(() => {
@@ -65,16 +69,21 @@ export default function App() {
     history.replaceState(null, '', `?${p.toString()}`);
   }, [ui]);
 
-  const selectedDay: DaySummary | null =
-    ui.sel && month ? month.days.find((x) => x.d === ui.sel!.d && x.m === ui.sel!.m) ?? null : null;
-
   const shiftMonth = (delta: number) => setUi((s) => {
     const dt = new Date(s.year, s.month - 1 + delta, 1);
     return { ...s, year: dt.getFullYear(), month: dt.getMonth() + 1, sel: null };
   });
   const goToday = () => setUi((s) => ({ ...s, year: today.y, month: today.m, sel: null }));
-  const selectDay = (day: DaySummary) =>
-    setUi((s) => ({ ...s, sel: { y: day.y, m: day.m, d: day.d }, hour: day.bestIndex }));
+  const selectDay = (dayS: DaySummary) =>
+    setUi((s) => ({ ...s, sel: { y: dayS.y, m: dayS.m, d: dayS.d }, hour: dayS.bestIndex }));
+
+  // ±1 day, following across month boundaries; keep the current 时辰 and tab.
+  const shiftDay = (delta: number) => setUi((s) => {
+    if (!s.sel) return s;
+    const dt = new Date(s.sel.y, s.sel.m - 1, s.sel.d + delta);
+    const ny = dt.getFullYear(), nm = dt.getMonth() + 1, nd = dt.getDate();
+    return { ...s, sel: { y: ny, m: nm, d: nd }, year: ny, month: nm };
+  });
 
   const share = async () => {
     try { await navigator.clipboard.writeText(location.href); } catch { /* address bar has it */ }
@@ -118,19 +127,21 @@ export default function App() {
 
           <Legend />
           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
-            每格 12 段为该日 12 时辰吉凶粗标；底部横条为全日综合。颜色评分为临时启发式（门/星/神 + 五不遇时），
-            非专业格局评分，将由格局注册表取代。
+            每格右上为当日综合评分（0–100），12 段为该日 12 时辰吉凶粗标，底部横条为全日综合。
+            评分为临时启发式（门/星/神 + 五不遇时），非专业格局评分，将由格局注册表取代。
           </p>
         </div>
 
         {/* Day detail / hint */}
         <div>
-          {selectedDay ? (
+          {ui.sel && selectedDay ? (
             <DayDetailPanel
               day={selectedDay}
               options={options}
               selectedHour={ui.hour}
               onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))}
+              onPrevDay={() => shiftDay(-1)}
+              onNextDay={() => shiftDay(1)}
               onClose={() => setUi((s) => ({ ...s, sel: null }))}
             />
           ) : (

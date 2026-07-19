@@ -6,17 +6,19 @@ import { HourRow } from './HourRow.tsx';
 import { SummaryHeader } from './SummaryHeader.tsx';
 import { FourPillarsBar } from './FourPillarsBar.tsx';
 import { PalaceGrid } from './PalaceGrid.tsx';
-import { bandColor, BAND_LABEL } from '../calendar/bands.ts';
+import { bandColor, BAND_LABEL, scorePercent } from '../calendar/bands.ts';
 
 type Tab = 'hours' | 'chart';
 
 export function DayDetailPanel({
-  day, options, selectedHour, onSelectHour, onClose,
+  day, options, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose,
 }: {
   day: DaySummary;
   options: CalendarOptions;
   selectedHour: number;
   onSelectHour: (i: number) => void;
+  onPrevDay: () => void;
+  onNextDay: () => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('hours');
@@ -26,19 +28,20 @@ export function DayDetailPanel({
     y: day.y, m: day.m, d: day.d, hh: h.hh, mm: 0, ...options,
   };
   const { chart, loading } = useChart(input);
+  const hourStem = chart ? chart.pillars.hour.name.charAt(0) : undefined;
 
   const openChart = (i: number) => { onSelectHour(i); setTab('chart'); };
   const step = (delta: number) => onSelectHour(Math.min(11, Math.max(0, selectedHour + delta)));
 
   return (
     <div className="panel gold-frame p-4 flex flex-col gap-3" style={{ minHeight: 420 }}>
-      <div className="flex items-center gap-3">
-        <h2 className="text-base font-semibold">
-          {day.y}年{day.m}月{day.d}日
-        </h2>
+      <div className="flex items-center gap-2">
+        <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onPrevDay} title="前一天">‹ 日</button>
+        <h2 className="text-base font-semibold">{day.y}年{day.m}月{day.d}日</h2>
+        <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onNextDay} title="后一天">日 ›</button>
         <span className="text-xs px-2 py-0.5 rounded-full"
               style={{ color: bandColor(day.dayBand), border: '1px solid var(--border)' }}>
-          日评 {BAND_LABEL[day.dayBand]}
+          日评 {BAND_LABEL[day.dayBand]} · {scorePercent(day.dayScore)}
         </span>
         <button className="seg rounded-lg px-2.5 py-1 text-xs ml-auto" onClick={onClose}>关闭 ✕</button>
       </div>
@@ -70,7 +73,7 @@ export function DayDetailPanel({
           </div>
           {chart && <SummaryHeader chart={chart} />}
           {chart && <FourPillarsBar chart={chart} />}
-          {chart && <PalaceGrid board={chart.board} />}
+          {chart && <PalaceGrid board={chart.board} hourStem={hourStem} />}
           {loading && !chart && (
             <div className="panel p-8 text-center" style={{ color: 'var(--text-dim)' }}>计算中…</div>
           )}
