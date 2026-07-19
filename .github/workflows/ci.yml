@@ -1,25 +1,29 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# QMDJ — Pull Request CI
+# QMDJ Calendar — CI
 #
-# Implements the five-layer testing model:
-#   L1 Golden fixtures (truth)      → engine-tests
-#   L2 Boundary tests               → engine-tests
-#   L3 Invariant/property tests     → engine-tests
-#   L4 Parity (Node↔browser, tRPC)  → parity-browser, server-contract
-#   L5 Product (build, e2e, perf)   → build, e2e-smoke, perf-budgets
+# Matches the repo as it actually is today: a single-package Vite + React app
+# with the Zhirun engine vendored under src/engine/. Two gates that mean
+# something and stay green:
+#   1. typecheck  — tsc --noEmit over src/ (catches engine + UI type breaks)
+#   2. build      — vite build must produce a production bundle
 #
-# Path filtering: any change under packages/engine/** triggers the full
-# matrix; web-only changes skip the heavy engine jobs.
+# The build artifact is uploaded so you can preview any commit's output.
 #
-# ASSUMPTIONS (adjust if your repo differs — marked with ⚙):
-#   ⚙ Package manager: pnpm with workspaces
-#   ⚙ Test runner: Vitest
-#   ⚙ Script names per package — see tooling/README-ci.md for the contract
+# Runs on PRs into main, on pushes to main, and on demand.
+#
+# HARDENING (later, not blocking):
+#   • Commit a package-lock.json and switch `npm install` → `npm ci` for
+#     reproducible installs (also lets setup-node cache by the lockfile hash).
+#   • Add a test job once a runner (e.g. Vitest) and the first golden
+#     fixtures land — see tooling/ and packages/engine/tests/ scaffolding.
+#   • Add a deploy job when a production host is chosen.
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
 
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
   workflow_dispatch:
 
@@ -28,242 +32,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Detect what changed, so downstream jobs can skip appropriately ────────
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      engine: ${{ steps.filter.outputs.engine }}
-      web: ${{ steps.filter.outputs.web }}
-      server: ${{ steps.filter.outputs.server }}
-      ci: ${{ steps.filter.outputs.ci }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            engine:
-              - 'packages/engine/**'
-            web:
-              - 'apps/web/**'
-            server:
-              - 'apps/server/**'
-            ci:
-              - '.github/workflows/**'
-              - 'tooling/**'
-
-  # ── Fast fail: install, typecheck, lint (always runs) ─────────────────────
-  static-checks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4                      # ⚙ pnpm assumed
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm -r typecheck
-      - run: pnpm -r lint
-
-  # ── L1 fixture provenance gate: every golden fixture must validate ────────
-  # Runs before engine tests so a malformed/unsourced fixture fails loudly
-  # and cheaply. This is the "no fabrication" rule, enforced by machine.
-  fixture-validate:
-    runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.engine == 'true' || needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Validate golden fixture schema + provenance
-        run: node tooling/validate-fixtures.mjs
-
-  # ── L1 + L2 + L3 + pattern tests: the engine suite ────────────────────────
-  # Merge-blocking. No engine change lands with a red golden test.
-  engine-tests:
-    runs-on: ubuntu-latest
-    needs: [static-checks, fixture-validate]
-    if: needs.changes.outputs.engine == 'true' || needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: "L1 — Golden fixtures (truth tests)"
-        run: pnpm --filter @qmdj/engine test:golden
-      - name: "L2 — Boundary tests (solar terms, 晚子时, 换旬)"
-        run: pnpm --filter @qmdj/engine test:boundary
-      - name: "L3 — Invariant / property tests"
-        run: pnpm --filter @qmdj/engine test:invariants
-      - name: "Pattern tests (one +, one − per 格局)"
-        run: pnpm --filter @qmdj/engine test:patterns
-
-  # ── L4a Parity: engine must be byte-identical in a real browser runtime ───
-  # Uses Vitest browser mode (Chromium via Playwright) so the worker
-  # environment is genuinely exercised, not simulated with jsdom.
-  parity-browser:
-    runs-on: ubuntu-latest
-    needs: static-checks
-    if: needs.changes.outputs.engine == 'true' || needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install chromium --with-deps
-      - name: "L4 — Node↔browser parity on golden fixtures"
-        run: pnpm --filter @qmdj/engine test:parity
-
-  # ── L4b Contract: tRPC wrappers return exactly what the engine returns ────
-  server-contract:
-    runs-on: ubuntu-latest
-    needs: static-checks
-    if: >-
-      needs.changes.outputs.server == 'true' ||
-      needs.changes.outputs.engine == 'true' ||
-      needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: "L4 — tRPC contract tests"
-        run: pnpm --filter @qmdj/server test:contract
-
-  # ── L5a Build: both apps must compile for production ──────────────────────
   build:
     runs-on: ubuntu-latest
-    needs: static-checks
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
-      - name: Upload web build artifact
+          cache: npm
+          cache-dependency-path: package.json   # no lockfile committed yet
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Build (vite)
+        run: npm run build
+
+      - name: Upload production build
         uses: actions/upload-artifact@v4
         with:
-          name: web-dist
-          path: apps/web/dist
-          retention-days: 7
-
-  # ── L5b Component + visual tests for the UI (items 10a/10b) ───────────────
-  # Component tests: 12-segment bar colour mapping, PalaceCell slot layout
-  # (神→门→星→干→支), quality borders, 空/马/迫/墓 markers — fed by the same
-  # golden fixtures the engine uses.
-  ui-component-tests:
-    runs-on: ubuntu-latest
-    needs: static-checks
-    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.engine == 'true' || needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: "L5 — UI component tests"
-        run: pnpm --filter @qmdj/web test:components
-
-  # ── L5c E2E smoke + visual regression ─────────────────────────────────────
-  # Skips gracefully until a Playwright config exists in apps/web.
-  e2e-smoke:
-    runs-on: ubuntu-latest
-    needs: build
-    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Check for Playwright config
-        id: pw
-        run: |
-          if [ -f apps/web/playwright.config.ts ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No playwright.config.ts in apps/web — e2e smoke skipped."
-          fi
-      - if: steps.pw.outputs.present == 'true'
-        run: pnpm exec playwright install chromium --with-deps
-      - name: "L5 — E2E smoke (calendar, day panel, hour paging, search, .ics)"
-        if: steps.pw.outputs.present == 'true'
-        run: pnpm --filter @qmdj/web test:e2e
-      - name: "L5 — Visual regression snapshots (dark+gold must not drift)"
-        if: steps.pw.outputs.present == 'true'
-        run: pnpm --filter @qmdj/web test:visual
-      - name: Upload visual diffs on failure
-        if: failure() && steps.pw.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: visual-regression-diffs
-          path: apps/web/test-results
-          retention-days: 7
-
-  # ── L5d Performance budgets ───────────────────────────────────────────────
-  # Initial budgets are generous; tighten after Phase 2 memoization lands.
-  # Budgets are asserted inside the tests themselves (test:perf).
-  perf-budgets:
-    runs-on: ubuntu-latest
-    needs: engine-tests
-    if: needs.changes.outputs.engine == 'true' || needs.changes.outputs.ci == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: "L5 — Perf budgets (month summary, 180-day search)"
-        run: pnpm --filter @qmdj/engine test:perf
-
-  # ── Merge gate: single required status for branch protection ──────────────
-  # In GitHub → Settings → Branches → protect `main`, require only this
-  # check. It aggregates everything above, including path-skipped jobs.
-  ci-gate:
-    runs-on: ubuntu-latest
-    needs:
-      - static-checks
-      - fixture-validate
-      - engine-tests
-      - parity-browser
-      - server-contract
-      - build
-      - ui-component-tests
-      - e2e-smoke
-      - perf-budgets
-    if: always()
-    steps:
-      - name: Fail if any required job failed
-        run: |
-          results='${{ toJSON(needs) }}'
-          echo "$results"
-          if echo "$results" | grep -Eq '"result": *"(failure|cancelled)"'; then
-            echo "One or more CI jobs failed."
-            exit 1
-          fi
-          echo "All CI jobs passed or were skipped by path filters."
+          name: qmdj-calendar-dist-${{ github.sha }}
+          path: dist
+          retention-days: 14
