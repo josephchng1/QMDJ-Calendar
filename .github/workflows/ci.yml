@@ -12,8 +12,6 @@
 # Runs on PRs into main, on pushes to main, and on demand.
 #
 # HARDENING (later, not blocking):
-#   • Commit a package-lock.json and switch `npm install` → `npm ci` for
-#     reproducible installs (also lets setup-node cache by the lockfile hash).
 #   • Grow the Vitest suite: bless golden fixtures (packages/engine/tests/
 #     golden/) and add boundary/parity/perf layers as they land.
 #   • Add a deploy job when a production host is chosen.
@@ -41,10 +39,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: package.json   # no lockfile committed yet
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci
 
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
