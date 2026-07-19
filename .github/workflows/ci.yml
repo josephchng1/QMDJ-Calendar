@@ -14,8 +14,8 @@
 # HARDENING (later, not blocking):
 #   • Commit a package-lock.json and switch `npm install` → `npm ci` for
 #     reproducible installs (also lets setup-node cache by the lockfile hash).
-#   • Add a test job once a runner (e.g. Vitest) and the first golden
-#     fixtures land — see tooling/ and packages/engine/tests/ scaffolding.
+#   • Grow the Vitest suite: bless golden fixtures (packages/engine/tests/
+#     golden/) and add boundary/parity/perf layers as they land.
 #   • Add a deploy job when a production host is chosen.
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
@@ -48,6 +48,9 @@ jobs:
 
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
+
+      - name: Unit tests (Vitest — engine invariants + golden fixtures)
+        run: npm test
 
       - name: Build (vite)
         run: npm run build
