@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qmdj-golden-fixture.schema.json",
+  "title": "QMDJ Golden Chart Fixture",
+  "description": "A verified Qimen chart used as a truth test. Every fixture MUST carry provenance (sources) — CI rejects fixtures without it. Changing an existing fixture requires a commit message explaining why the previous truth was wrong.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "description", "sources", "verified", "input", "expected"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Stable slug, e.g. '2026-07-06-2300-yindun9-chaibu'"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Human-readable: what this fixture covers and why it exists (e.g. '晚子时 boundary, 阴遁9局, verified 壬午日庚子时 chart')."
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "description": "External references the chart was verified against. Phase 1 exit criterion asks for TWO independent sources — the validator warns below 2 and fails at 0.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "retrievedDate"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "e.g. 'wannianrili.bmcx.com', 'yourchineseastrology.com', 'Yanxiang app', '3meta'"
+          },
+          "url": { "type": "string", "format": "uri" },
+          "retrievedDate": { "type": "string", "format": "date" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "verified": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by", "date"],
+      "properties": {
+        "by": { "type": "string", "description": "Who confirmed the values (domain expert)." },
+        "date": { "type": "string", "format": "date" },
+        "crossChecked": {
+          "type": "boolean",
+          "description": "True once confirmed against >=2 independent sources."
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instant", "options"],
+      "properties": {
+        "instant": {
+          "type": "string",
+          "description": "ISO 8601 WITH explicit UTC offset, e.g. '2026-07-06T23:00:00+08:00'. Never a bare local time — 晚子时 and solar-term boundaries depend on the exact instant.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?([+-]\\d{2}:\\d{2}|Z)$"
+        },
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "boardType", "lateZiShi", "centrePalace"],
+          "properties": {
+            "method": { "enum": ["chaibu", "zhirun", "yinpan"] },
+            "boardType": { "enum": ["zhuanpan", "feipan"] },
+            "lateZiShi": { "enum": ["nextDay", "sameDay"] },
+            "centrePalace": { "enum": ["kun", "gen"] }
+          }
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pillars", "dun", "ju", "xunShou", "zhiFu", "zhiShi", "kongWang", "palaces"],
+      "properties": {
+        "pillars": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["year", "month", "day", "hour"],
+          "properties": {
+            "year": { "$ref": "#/$defs/ganzhi" },
+            "month": { "$ref": "#/$defs/ganzhi" },
+            "day": { "$ref": "#/$defs/ganzhi" },
+            "hour": { "$ref": "#/$defs/ganzhi" }
+          }
+        },
+        "dun": { "enum": ["yin", "yang"], "description": "阴遁 / 阳遁" },
+        "ju": { "type": "integer", "minimum": 1, "maximum": 9, "description": "局数" },
+        "xunShou": {
+          "type": "string",
+          "description": "旬首 of the HOUR pillar, e.g. '甲午' — this drives hour void (Bug 3)."
+        },
+        "zhiFu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["star", "palace"],
+          "properties": {
+            "star": { "$ref": "#/$defs/star" },
+            "palace": { "$ref": "#/$defs/palaceNumber" }
+          },
+          "description": "值符: lead star and the palace it lands in."
+        },
+        "zhiShi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["gate", "palace"],
+          "properties": {
+            "gate": { "$ref": "#/$defs/gate" },
+            "palace": { "$ref": "#/$defs/palaceNumber" }
+          },
+          "description": "值使: lead gate and the palace it lands in."
+        },
+        "kongWang": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hourVoid"],
+          "properties": {
+            "hourVoid": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "$ref": "#/$defs/branch" },
+              "description": "时空 — the two void branches from the HOUR pillar's 旬 (the chart's 空亡 markers)."
+            },
+            "dayVoid": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "$ref": "#/$defs/branch" },
+              "description": "日空 — optional, for display; must never be used as the chart's 空亡."
+            }
+          }
+        },
+        "maXing": {
+          "$ref": "#/$defs/branch",
+          "description": "马星 branch. Optional at fixture level; include when verified."
+        },
+        "palaces": {
+          "type": "object",
+          "description": "All 9 palaces keyed '1'..'9' (Luoshu numbering). Palace 5 (中宫) may have null gate/spirit depending on method.",
+          "additionalProperties": false,
+          "required": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+          "properties": {
+            "1": { "$ref": "#/$defs/palace" },
+            "2": { "$ref": "#/$defs/palace" },
+            "3": { "$ref": "#/$defs/palace" },
+            "4": { "$ref": "#/$defs/palace" },
+            "5": { "$ref": "#/$defs/palace" },
+            "6": { "$ref": "#/$defs/palace" },
+            "7": { "$ref": "#/$defs/palace" },
+            "8": { "$ref": "#/$defs/palace" },
+            "9": { "$ref": "#/$defs/palace" }
+          }
+        },
+        "patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional: pattern-registry ids (§5) expected to fire, e.g. 'qinglong-fanshou'. Omit until the registry lands (Phase 3); once present, the golden runner asserts exact set equality."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stem": { "enum": ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] },
+    "branch": { "enum": ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] },
+    "ganzhi": {
+      "type": "string",
+      "pattern": "^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$",
+      "description": "Stem+branch pair, e.g. '壬午'."
+    },
+    "star": { "enum": ["天蓬", "天芮", "天冲", "天辅", "天禽", "天心", "天柱", "天任", "天英"] },
+    "gate": { "enum": ["休门", "生门", "伤门", "杜门", "景门", "死门", "惊门", "开门"] },
+    "spirit": { "enum": ["值符", "腾蛇", "太阴", "六合", "白虎", "玄武", "九地", "九天", "勾陈", "朱雀"] },
+    "palaceNumber": { "type": "integer", "minimum": 1, "maximum": 9 },
+    "palace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diPanStems", "tianPanStems", "star", "gate", "spirit"],
+      "properties": {
+        "diPanStems": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/stem" },
+          "description": "地盘 stem(s); 中宫 or a palace hosting 禽 may carry two."
+        },
+        "tianPanStems": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/stem" }
+        },
+        "star": {
+          "anyOf": [{ "$ref": "#/$defs/star" }, { "type": "null" }],
+          "description": "Null only where the method genuinely places no star (rare; document in fixture description)."
+        },
+        "gate": {
+          "anyOf": [{ "$ref": "#/$defs/gate" }, { "type": "null" }],
+          "description": "中宫 has no gate in 转盘 methods → null."
+        },
+        "spirit": {
+          "anyOf": [{ "$ref": "#/$defs/spirit" }, { "type": "null" }]
+        }
+      }
+    }
+  }
+}

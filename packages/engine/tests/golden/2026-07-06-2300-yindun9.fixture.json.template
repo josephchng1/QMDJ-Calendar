@@ -1,0 +1,61 @@
+{
+  "__README": "TEMPLATE — rename to 2026-07-06-2300-yindun9.fixture.json ONLY after every TODO_VERIFY below is replaced with values from your verified chart. The validator ignores *.template files; once renamed, CI will validate and the golden runner will assert against it. Pre-filled values (day/hour pillar, 阴遁, 9局) come from the architecture doc's already-verified chart. Nothing else has been assumed — do not let an AI fill the TODOs from memory; copy them from your verified sources.",
+  "id": "2026-07-06-2300-yindun9",
+  "description": "Verified 壬午日 庚子时 阴遁9局 chart, 2026-07-06 23:00 — also exercises 晚子时 (day pillar advances at 23:00).",
+  "sources": [
+    {
+      "name": "TODO_VERIFY (e.g. wannianrili.bmcx.com)",
+      "url": "TODO_VERIFY",
+      "retrievedDate": "TODO_VERIFY"
+    },
+    {
+      "name": "TODO_VERIFY second independent source",
+      "url": "TODO_VERIFY",
+      "retrievedDate": "TODO_VERIFY"
+    }
+  ],
+  "verified": {
+    "by": "Joe",
+    "date": "TODO_VERIFY",
+    "crossChecked": false
+  },
+  "input": {
+    "instant": "2026-07-06T23:00:00+08:00",
+    "__note_instant": "CONFIRM the +08:00 offset matches how the chart was verified (Malaysia/Singapore time assumed).",
+    "options": {
+      "method": "TODO_VERIFY chaibu|zhirun|yinpan — which method was this chart verified under?",
+      "boardType": "zhuanpan",
+      "lateZiShi": "nextDay",
+      "centrePalace": "kun"
+    }
+  },
+  "expected": {
+    "pillars": {
+      "year": "TODO_VERIFY",
+      "month": "TODO_VERIFY",
+      "day": "壬午",
+      "hour": "庚子"
+    },
+    "dun": "yin",
+    "ju": 9,
+    "xunShou": "TODO_VERIFY — 旬首 of 庚子 hour pillar",
+    "zhiFu": { "star": "TODO_VERIFY", "palace": 0 },
+    "zhiShi": { "gate": "TODO_VERIFY", "palace": 0 },
+    "kongWang": {
+      "hourVoid": ["TODO_VERIFY", "TODO_VERIFY"],
+      "dayVoid": ["TODO_VERIFY", "TODO_VERIFY"]
+    },
+    "maXing": "TODO_VERIFY",
+    "palaces": {
+      "1": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "2": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "3": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "4": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "5": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": null, "spirit": null },
+      "6": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "7": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "8": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" },
+      "9": { "diPanStems": ["TODO"], "tianPanStems": ["TODO"], "star": "TODO", "gate": "TODO", "spirit": "TODO" }
+    }
+  }
+}
