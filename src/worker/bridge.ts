@@ -4,6 +4,11 @@ import type { ChartInput, Chart } from '../engine/index.ts';
 import type { CalendarOptions, DaySummary, MonthSummary } from '../calendar/summary.ts';
 import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
 
+// Omit is NOT distributive over a union: keyof (A|B|C) is only the *common*
+// keys, so Omit<WorkerRequest, 'id'> would collapse to just { kind }. Distribute
+// it so each variant keeps its own payload (input / y,m,d / year,month...).
+type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never;
+
 let worker: Worker | null = null;
 let seq = 0;
 const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
@@ -23,7 +28,7 @@ function getWorker(): Worker {
   return worker;
 }
 
-function send<T>(req: Omit<WorkerRequest, 'id'>, pick: (r: WorkerResponse) => T): Promise<T> {
+function send<T>(req: DistributiveOmit<WorkerRequest, 'id'>, pick: (r: WorkerResponse) => T): Promise<T> {
   const w = getWorker();
   const id = ++seq;
   return new Promise<T>((resolve, reject) => {
