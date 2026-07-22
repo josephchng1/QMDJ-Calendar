@@ -4,15 +4,19 @@ import { useMonth } from './hooks/useMonth.ts';
 import { useDay } from './hooks/useDay.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
+import { PatternsPanel } from './components/PatternsPanel.tsx';
 import { Legend } from './components/Legend.tsx';
 import { BAND_LABEL, bandColor } from './calendar/bands.ts';
 
 type Method = 'zhirun' | 'chaibu';
+type View = 'calendar' | 'patterns';
 
 interface UiState {
+  view: View;
   year: number; month: number;                     // displayed month (1..12)
   sel: { y: number; m: number; d: number } | null; // selected day
   hour: number;                                     // selected 时辰 index 0..11
+  fx: string | null;                                // selected 格局 id (patterns view)
   method: Method; spiritVariant: boolean; lateZiNextDay: boolean;
 }
 
@@ -33,8 +37,10 @@ function initialState(): UiState {
   }
 
   return {
+    view: p.get('view') === 'patterns' ? 'patterns' : 'calendar',
     year, month, sel,
     hour: p.get('h') ? Math.min(11, Math.max(0, +p.get('h')!)) : 0,
+    fx: p.get('fx') || null,
     method: p.get('mtd') === 'chaibu' ? 'chaibu' : 'zhirun',
     spiritVariant: p.get('sv') === '1',
     lateZiNextDay: p.get('lz') !== '0',
@@ -61,8 +67,10 @@ export default function App() {
   // deep-link sync
   useEffect(() => {
     const p = new URLSearchParams();
+    if (ui.view === 'patterns') p.set('view', 'patterns');
     p.set('ym', `${ui.year}-${pad(ui.month)}`);
     if (ui.sel) { p.set('d', `${ui.sel.y}-${pad(ui.sel.m)}-${pad(ui.sel.d)}`); p.set('h', String(ui.hour)); }
+    if (ui.fx) p.set('fx', ui.fx);
     if (ui.method === 'chaibu') p.set('mtd', 'chaibu');
     if (ui.spiritVariant) p.set('sv', '1');
     if (!ui.lateZiNextDay) p.set('lz', '0');
@@ -99,64 +107,79 @@ export default function App() {
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-2 mb-5">
         <h1 className="text-xl font-semibold gold tracking-widest">奇門遁甲 · 择日历</h1>
         <span className="text-xs" style={{ color: 'var(--text-dim)' }}>Qimen Calendar · 时家转盘</span>
+
+        {/* view switcher */}
+        <div className="flex items-center gap-1 ml-3">
+          <Toggle active={ui.view === 'calendar'} onClick={() => setUi((s) => ({ ...s, view: 'calendar' }))}>择日历</Toggle>
+          <Toggle active={ui.view === 'patterns'} onClick={() => setUi((s) => ({ ...s, view: 'patterns' }))}>格局</Toggle>
+        </div>
+
         <div className="flex items-center gap-1 ml-auto">
-          <Toggle active={ui.method === 'zhirun'} onClick={() => setUi((s) => ({ ...s, method: 'zhirun' }))}>置闰</Toggle>
-          <Toggle active={ui.method === 'chaibu'} onClick={() => setUi((s) => ({ ...s, method: 'chaibu' }))}>拆补</Toggle>
-          <Toggle active={ui.spiritVariant} onClick={() => setUi((s) => ({ ...s, spiritVariant: !s.spiritVariant }))}>神·变体</Toggle>
-          <Toggle active={ui.lateZiNextDay} onClick={() => setUi((s) => ({ ...s, lateZiNextDay: !s.lateZiNextDay }))}>晚子时次日</Toggle>
+          {ui.view === 'calendar' && (
+            <>
+              <Toggle active={ui.method === 'zhirun'} onClick={() => setUi((s) => ({ ...s, method: 'zhirun' }))}>置闰</Toggle>
+              <Toggle active={ui.method === 'chaibu'} onClick={() => setUi((s) => ({ ...s, method: 'chaibu' }))}>拆补</Toggle>
+              <Toggle active={ui.spiritVariant} onClick={() => setUi((s) => ({ ...s, spiritVariant: !s.spiritVariant }))}>神·变体</Toggle>
+              <Toggle active={ui.lateZiNextDay} onClick={() => setUi((s) => ({ ...s, lateZiNextDay: !s.lateZiNextDay }))}>晚子时次日</Toggle>
+            </>
+          )}
           <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={share}>{copied ? '已复制 ✓' : '复制链接'}</button>
         </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
-        {/* Calendar */}
-        <div className="panel p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => shiftMonth(-1)}>←</button>
-            <h2 className="text-base font-semibold mx-auto">{ui.year} 年 {ui.month} 月</h2>
-            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => shiftMonth(1)}>→</button>
-            <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={goToday}>今天</button>
+      {ui.view === 'patterns' ? (
+        <PatternsPanel selectedId={ui.fx} onSelect={(id) => setUi((s) => ({ ...s, fx: id }))} />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
+          {/* Calendar */}
+          <div className="panel p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => shiftMonth(-1)}>←</button>
+              <h2 className="text-base font-semibold mx-auto">{ui.year} 年 {ui.month} 月</h2>
+              <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => shiftMonth(1)}>→</button>
+              <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={goToday}>今天</button>
+            </div>
+
+            {month && (
+              <MonthGrid month={month} today={today} selected={ui.sel} onSelectDay={selectDay} />
+            )}
+            {loading && !month && (
+              <div className="p-10 text-center" style={{ color: 'var(--text-dim)' }}>计算本月各时辰…</div>
+            )}
+
+            <Legend />
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
+              每格右上为当日综合评分（0–100），12 段为该日 12 时辰吉凶粗标，底部横条为全日综合。
+              评分为临时启发式（门/星/神 + 五不遇时），非专业格局评分，将由格局注册表取代。
+            </p>
           </div>
 
-          {month && (
-            <MonthGrid month={month} today={today} selected={ui.sel} onSelectDay={selectDay} />
-          )}
-          {loading && !month && (
-            <div className="p-10 text-center" style={{ color: 'var(--text-dim)' }}>计算本月各时辰…</div>
-          )}
-
-          <Legend />
-          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
-            每格右上为当日综合评分（0–100），12 段为该日 12 时辰吉凶粗标，底部横条为全日综合。
-            评分为临时启发式（门/星/神 + 五不遇时），非专业格局评分，将由格局注册表取代。
-          </p>
+          {/* Day detail / hint */}
+          <div>
+            {ui.sel && selectedDay ? (
+              <DayDetailPanel
+                day={selectedDay}
+                options={options}
+                selectedHour={ui.hour}
+                onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))}
+                onPrevDay={() => shiftDay(-1)}
+                onNextDay={() => shiftDay(1)}
+                onClose={() => setUi((s) => ({ ...s, sel: null }))}
+              />
+            ) : (
+              <div className="panel p-8 text-center flex flex-col gap-2" style={{ minHeight: 200 }}>
+                <span className="text-sm" style={{ color: 'var(--text-dim)' }}>点选任一日期，查看当日 12 时辰与奇门盘</span>
+                {month && (
+                  <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                    本月共 {month.days.filter((d) => d.dayBand === 'excellent').length} 天评为
+                    <span style={{ color: bandColor('excellent') }}> {BAND_LABEL.excellent}</span>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Day detail / hint */}
-        <div>
-          {ui.sel && selectedDay ? (
-            <DayDetailPanel
-              day={selectedDay}
-              options={options}
-              selectedHour={ui.hour}
-              onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))}
-              onPrevDay={() => shiftDay(-1)}
-              onNextDay={() => shiftDay(1)}
-              onClose={() => setUi((s) => ({ ...s, sel: null }))}
-            />
-          ) : (
-            <div className="panel p-8 text-center flex flex-col gap-2" style={{ minHeight: 200 }}>
-              <span className="text-sm" style={{ color: 'var(--text-dim)' }}>点选任一日期，查看当日 12 时辰与奇门盘</span>
-              {month && (
-                <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
-                  本月共 {month.days.filter((d) => d.dayBand === 'excellent').length} 天评为
-                  <span style={{ color: bandColor('excellent') }}> {BAND_LABEL.excellent}</span>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
