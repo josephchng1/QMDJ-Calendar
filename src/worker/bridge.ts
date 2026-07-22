@@ -2,6 +2,7 @@
 // layer would expose, so swapping worker<->server later is a one-line change (§6.2).
 import type { ChartInput, Chart } from '../engine/index.ts';
 import type { CalendarOptions, DaySummary, MonthSummary } from '../calendar/summary.ts';
+import type { SearchQuery, SearchResult } from '../calendar/search.ts';
 import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
 
 // Omit is NOT distributive over a union: keyof (A|B|C) is only the *common*
@@ -45,4 +46,7 @@ export function computeDay(y: number, m: number, d: number, opts: CalendarOption
 }
 export function computeMonth(year: number, month: number, opts: CalendarOptions): Promise<MonthSummary> {
   return send({ kind: 'month', year, month, opts }, (r) => r.month!);
+}
+export function computeSearch(query: SearchQuery): Promise<SearchResult> {
+  return send({ kind: 'search', query }, (r) => r.search!);
 }

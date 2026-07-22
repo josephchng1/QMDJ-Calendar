@@ -5,11 +5,12 @@ import { useDay } from './hooks/useDay.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
 import { PatternsPanel } from './components/PatternsPanel.tsx';
+import { SearchView } from './components/SearchView.tsx';
 import { Legend } from './components/Legend.tsx';
 import { BAND_LABEL, bandColor } from './calendar/bands.ts';
 
 type Method = 'zhirun' | 'chaibu';
-type View = 'calendar' | 'patterns';
+type View = 'calendar' | 'patterns' | 'search';
 
 interface UiState {
   view: View;
@@ -37,7 +38,7 @@ function initialState(): UiState {
   }
 
   return {
-    view: p.get('view') === 'patterns' ? 'patterns' : 'calendar',
+    view: p.get('view') === 'patterns' ? 'patterns' : p.get('view') === 'search' ? 'search' : 'calendar',
     year, month, sel,
     hour: p.get('h') ? Math.min(11, Math.max(0, +p.get('h')!)) : 0,
     fx: p.get('fx') || null,
@@ -67,7 +68,7 @@ export default function App() {
   // deep-link sync
   useEffect(() => {
     const p = new URLSearchParams();
-    if (ui.view === 'patterns') p.set('view', 'patterns');
+    if (ui.view !== 'calendar') p.set('view', ui.view);
     p.set('ym', `${ui.year}-${pad(ui.month)}`);
     if (ui.sel) { p.set('d', `${ui.sel.y}-${pad(ui.sel.m)}-${pad(ui.sel.d)}`); p.set('h', String(ui.hour)); }
     if (ui.fx) p.set('fx', ui.fx);
@@ -112,6 +113,7 @@ export default function App() {
         <div className="flex items-center gap-1 ml-3">
           <Toggle active={ui.view === 'calendar'} onClick={() => setUi((s) => ({ ...s, view: 'calendar' }))}>择日历</Toggle>
           <Toggle active={ui.view === 'patterns'} onClick={() => setUi((s) => ({ ...s, view: 'patterns' }))}>格局</Toggle>
+          <Toggle active={ui.view === 'search'} onClick={() => setUi((s) => ({ ...s, view: 'search' }))}>搜索</Toggle>
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
@@ -129,6 +131,12 @@ export default function App() {
 
       {ui.view === 'patterns' ? (
         <PatternsPanel selectedId={ui.fx} onSelect={(id) => setUi((s) => ({ ...s, fx: id }))} />
+      ) : ui.view === 'search' ? (
+        <SearchView
+          options={options}
+          onOpenSlot={(y, m, d, branchIndex) =>
+            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m }))}
+        />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
           {/* Calendar */}

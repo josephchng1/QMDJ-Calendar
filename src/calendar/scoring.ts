@@ -45,7 +45,7 @@ const PEN = {
 const ROLLUP = { zhiShi: 0.5, zhiFu: 0.25, board: 0.25 };
 const THRESH = { excellent: 40, good: 12, neutralLow: -12, caution: -40 };
 
-function bandOf(score: number, blocked = false): Band {
+export function bandOf(score: number, blocked = false): Band {
   if (blocked) return 'bad';
   if (score >= THRESH.excellent) return 'excellent';
   if (score >= THRESH.good) return 'good';

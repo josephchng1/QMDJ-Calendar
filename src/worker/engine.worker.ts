@@ -6,17 +6,20 @@ import {
   computeDaySummary, computeMonthSummary,
   type CalendarOptions, type DaySummary, type MonthSummary,
 } from '../calendar/summary.ts';
+import { searchRange, type SearchQuery, type SearchResult } from '../calendar/search.ts';
 
 export type WorkerRequest =
   | { id: number; kind: 'chart'; input: ChartInput }
   | { id: number; kind: 'day'; y: number; m: number; d: number; opts: CalendarOptions }
-  | { id: number; kind: 'month'; year: number; month: number; opts: CalendarOptions };
+  | { id: number; kind: 'month'; year: number; month: number; opts: CalendarOptions }
+  | { id: number; kind: 'search'; query: SearchQuery };
 
 export type WorkerResponse = {
   id: number;
   chart?: Chart;
   day?: DaySummary;
   month?: MonthSummary;
+  search?: SearchResult;
   error?: string;
 };
 
@@ -34,6 +37,9 @@ ctx.onmessage = (e: MessageEvent<WorkerRequest>) => {
         break;
       case 'month':
         ctx.postMessage({ id: req.id, month: computeMonthSummary(req.year, req.month, req.opts) } satisfies WorkerResponse);
+        break;
+      case 'search':
+        ctx.postMessage({ id: req.id, search: searchRange(req.query) } satisfies WorkerResponse);
         break;
     }
   } catch (err) {
