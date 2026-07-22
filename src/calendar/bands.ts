@@ -17,8 +17,9 @@ export function shichenWindow(branchIndex: number): string {
   return `${p(start)}–${p(end)}`;
 }
 
-/** Map a raw score (~[-6,+6]) to a 0–100 percentage for at-a-glance display. */
+/** Map a signed 格局 score (~[-60,+60] after roll-up) to a 0–100 percentage for
+ *  at-a-glance display. 50 = neutral; a single 大吉 formation lands ~80+. */
 export function scorePercent(raw: number): number {
-  const pct = Math.round(((raw + 6) / 12) * 100);
+  const pct = Math.round(((raw + 60) / 120) * 100);
   return Math.max(0, Math.min(100, pct));
 }

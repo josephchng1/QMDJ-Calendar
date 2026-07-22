@@ -25,6 +25,8 @@ export interface HourRating {
   score: number;
   band: Band;
   warnings: string[];
+  formations: string[]; // matched 格局 names (deduped, capped) — for badges/search
+  blocked: boolean;     // a veto fired (六仪击刑 / 三奇入墓)
 }
 
 export interface DaySummary {
@@ -44,7 +46,8 @@ export interface MonthSummary {
 export function computeDaySummary(y: number, m: number, d: number, opts: CalendarOptions = {}): DaySummary {
   const hours: HourRating[] = HOUR_SAMPLE.map((hh, branchIndex) => {
     const chart = buildChart({ y, m, d, hh, mm: 0, ...opts });
-    const { score, band, warnings } = scoreHour(chart);
+    const { score, band, warnings, blocked, formations } = scoreHour(chart);
+    const names = Array.from(new Set(formations.map((f) => f.name))).slice(0, 6);
     return {
       branchIndex,
       branch: BRANCHES[branchIndex],
@@ -53,11 +56,16 @@ export function computeDaySummary(y: number, m: number, d: number, opts: Calenda
       score,
       band,
       warnings,
+      formations: names,
+      blocked,
     };
   });
 
+  // Best 时辰: the highest-scoring non-blocked hour; fall back to highest overall
+  // if every hour is vetoed.
+  const rank = (h: HourRating) => (h.blocked ? h.score - 1000 : h.score);
   let bestIndex = 0;
-  for (let i = 1; i < hours.length; i++) if (hours[i].score > hours[bestIndex].score) bestIndex = i;
+  for (let i = 1; i < hours.length; i++) if (rank(hours[i]) > rank(hours[bestIndex])) bestIndex = i;
 
   const scores = hours.map((h) => h.score);
   return {

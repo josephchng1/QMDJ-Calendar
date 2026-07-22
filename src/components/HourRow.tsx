@@ -16,7 +16,7 @@ export function HourRow({
       className="cell w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left"
       style={{
         background: isActive ? 'var(--bg-cell)' : 'var(--bg-cell-2)',
-        border: `1px solid ${isActive ? 'var(--gold-dim)' : 'var(--border)'}`,
+        border: `1px solid ${hour.blocked ? 'var(--q-bad)' : isActive ? 'var(--gold-dim)' : 'var(--border)'}`,
       }}
     >
       <span className="swatch" style={{ background: c }} />
@@ -28,7 +28,13 @@ export function HourRow({
       </span>
       <span className="text-sm gold tracking-wide">{hour.ganzhi}</span>
       <span className="text-xs font-medium" style={{ color: c }}>{BAND_LABEL[hour.band]}</span>
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
+        {hour.formations.map((f) => (
+          <span key={f} className="text-[10px] px-1.5 py-0.5 rounded"
+                style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>
+            {f}
+          </span>
+        ))}
         {hour.warnings.map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>
