@@ -3,14 +3,7 @@ import type { DirHour } from '../hooks/useDayDirections.ts';
 import type { PalaceScore, Band } from '../calendar/palace.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
 import { gateColor, starColor, spiritColor, stemColor } from '../qmdata.ts';
-
-// v2 three-band presentation (§6.1). Only prime/good are tinted; plain is bare —
-// absence of tint IS the signal.
-const BANDV2: Record<Band, { label: string; color: string; bg: string }> = {
-  prime: { label: '大吉', color: 'var(--gold)', bg: 'var(--band-prime-bg)' },
-  good: { label: '吉', color: 'var(--q-excellent)', bg: 'var(--band-good-bg)' },
-  plain: { label: '不吉', color: 'var(--text-dim)', bg: 'var(--band-plain-bg)' },
-};
+import { V2_BAND_LABEL, V2_BAND_COLOR, V2_BAND_TINT } from '../calendar/bandsV2.ts';
 
 const ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6]; // classic 3×3 display order
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -84,7 +77,7 @@ export function DirectionBoard({
             const ps = summary.palaces[p - 1];
             const gl = chart.board.palaces[p - 1];
             const centre = p === 5;
-            const b = BANDV2[ps.band];
+            const b = { label: V2_BAND_LABEL[ps.band], color: V2_BAND_COLOR[ps.band], bg: V2_BAND_TINT[ps.band] };
             const dir = directionOf(p);
             const selected = focus === p;
             return (
@@ -148,7 +141,7 @@ export function DirectionBoard({
 }
 
 function PalaceReasons({ ps }: { ps: PalaceScore }) {
-  const b = BANDV2[ps.band];
+  const b = { label: V2_BAND_LABEL[ps.band], color: V2_BAND_COLOR[ps.band] };
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">

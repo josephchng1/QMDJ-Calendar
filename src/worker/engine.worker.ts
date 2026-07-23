@@ -6,7 +6,10 @@ import {
   computeDaySummary, computeMonthSummary, HOUR_SAMPLE,
   type CalendarOptions, type DaySummary, type MonthSummary,
 } from '../calendar/summary.ts';
-import { computeHourSummary, type HourSummary } from '../calendar/hour.ts';
+import {
+  computeHourSummary, computeMonthProjection,
+  type HourSummary, type MonthProjection,
+} from '../calendar/hour.ts';
 import { searchRange, type SearchQuery, type SearchResult } from '../calendar/search.ts';
 
 export type WorkerRequest =
@@ -14,7 +17,8 @@ export type WorkerRequest =
   | { id: number; kind: 'day'; y: number; m: number; d: number; opts: CalendarOptions }
   | { id: number; kind: 'month'; year: number; month: number; opts: CalendarOptions }
   | { id: number; kind: 'search'; query: SearchQuery }
-  | { id: number; kind: 'daydir'; y: number; m: number; d: number; opts: CalendarOptions };
+  | { id: number; kind: 'daydir'; y: number; m: number; d: number; opts: CalendarOptions }
+  | { id: number; kind: 'monthproj'; year: number; month: number; opts: CalendarOptions };
 
 export type WorkerResponse = {
   id: number;
@@ -23,6 +27,7 @@ export type WorkerResponse = {
   month?: MonthSummary;
   search?: SearchResult;
   dayDir?: { chart: Chart; summary: HourSummary }[];
+  monthProj?: MonthProjection;
   error?: string;
 };
 
@@ -54,6 +59,9 @@ ctx.onmessage = (e: MessageEvent<WorkerRequest>) => {
         ctx.postMessage({ id: req.id, dayDir } satisfies WorkerResponse);
         break;
       }
+      case 'monthproj':
+        ctx.postMessage({ id: req.id, monthProj: computeMonthProjection(req.year, req.month, req.opts) } satisfies WorkerResponse);
+        break;
     }
   } catch (err) {
     ctx.postMessage({ id: req.id, error: err instanceof Error ? err.message : String(err) } satisfies WorkerResponse);

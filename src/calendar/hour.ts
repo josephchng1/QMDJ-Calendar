@@ -16,7 +16,7 @@ import {
 } from './data/structural.ts';
 import { evaluatePalaces, type PalaceScore, type ScoreProfile, type Band } from './palace.ts';
 import { emergencyDirections, type Direction } from './direction.ts';
-import { HOUR_SAMPLE, type CalendarOptions } from './summary.ts';
+import { HOUR_SAMPLE, daysInMonth, type CalendarOptions } from './summary.ts';
 import type { Chart } from '../engine/index.ts';
 
 /** 五阳时 (甲乙丙丁戊) 利客 · 五阴时 (己庚辛壬癸) 利主. (§4.4) */
@@ -74,43 +74,75 @@ export interface PeakCell {
   score: number;
   band: Band;
 }
+/** Lightweight per-时辰 line for the calendar sparkline — the hour's best band
+ *  (prime > good > plain) and its direction counts. Not a score. */
+export interface HourBar {
+  branchIndex: number;
+  bestBand: Band;
+  blocked: boolean;
+  prime: number;
+  good: number;
+}
 export interface DayProjection {
   y: number; m: number; d: number;
   peak: PeakCell | null;         // null only if the whole day is blocked
   primeCells: number;            // prime (hour × palace) cells across the day
   goodCells: number;
   blockedHours: number;          // 时辰 fully excluded (五不遇时)
+  hours: HourBar[];              // 12, index-ordered — for the day cell's mini bar
 }
 
 const BRANCHES_CN = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+const rankBand = (b: Band): number => (b === 'prime' ? 2 : b === 'good' ? 1 : 0);
 
 export function computeDayProjection(
   y: number, m: number, d: number,
   opts: CalendarOptions = {}, profile: ScoreProfile = { kind: 'general' },
 ): DayProjection {
-  let primeCells = 0, goodCells = 0, blockedHours = 0;
   let peak: PeakCell | null = null;
-
-  HOUR_SAMPLE.forEach((hh, branchIndex) => {
+  const hours: HourBar[] = HOUR_SAMPLE.map((hh, branchIndex) => {
     const chart = buildChart({ y, m, d, hh, mm: 0, ...opts });
     const hs = computeHourSummary(chart, profile);
-    if (hs.chartBlocked) { blockedHours++; return; }
-    for (const ps of hs.palaces) {
-      if (ps.palace === 5 || ps.blocked) continue;
-      if (ps.band === 'prime') primeCells++;
-      else if (ps.band === 'good') goodCells++;
-      // peak = highest-scoring non-blocked cell, prime outranking good outranking plain
-      const rank = (b: Band) => (b === 'prime' ? 2 : b === 'good' ? 1 : 0);
-      if (peak == null
-        || rank(ps.band) > rank(peak.band)
-        || (rank(ps.band) === rank(peak.band) && ps.score > peak.score)) {
-        peak = {
-          branchIndex, branch: BRANCHES_CN[branchIndex],
-          palace: ps.palace, direction: ps.direction, score: ps.score, band: ps.band,
-        };
+    let prime = 0, good = 0, bestBand: Band = 'plain';
+    if (!hs.chartBlocked) {
+      for (const ps of hs.palaces) {
+        if (ps.palace === 5 || ps.blocked) continue;
+        if (ps.band === 'prime') { prime++; bestBand = 'prime'; }
+        else if (ps.band === 'good') { good++; if (bestBand !== 'prime') bestBand = 'good'; }
+        if (peak == null
+          || rankBand(ps.band) > rankBand(peak.band)
+          || (rankBand(ps.band) === rankBand(peak.band) && ps.score > peak.score)) {
+          peak = {
+            branchIndex, branch: BRANCHES_CN[branchIndex],
+            palace: ps.palace, direction: ps.direction, score: ps.score, band: ps.band,
+          };
+        }
       }
     }
+    return { branchIndex, bestBand, blocked: hs.chartBlocked, prime, good };
   });
 
-  return { y, m, d, peak, primeCells, goodCells, blockedHours };
+  return {
+    y, m, d, peak,
+    primeCells: hours.reduce((a, h) => a + h.prime, 0),
+    goodCells: hours.reduce((a, h) => a + h.good, 0),
+    blockedHours: hours.filter((h) => h.blocked).length,
+    hours,
+  };
+}
+
+// ─── month projection ─────────────────────────────────────────────────────────
+export interface MonthProjection {
+  year: number;
+  month: number;
+  days: DayProjection[];
+}
+export function computeMonthProjection(
+  year: number, month: number,
+  opts: CalendarOptions = {}, profile: ScoreProfile = { kind: 'general' },
+): MonthProjection {
+  const n = daysInMonth(year, month);
+  const days: DayProjection[] = [];
+  for (let d = 1; d <= n; d++) days.push(computeDayProjection(year, month, d, opts, profile));
+  return { year, month, days };
 }

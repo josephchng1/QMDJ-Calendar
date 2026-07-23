@@ -3,7 +3,7 @@
 import type { ChartInput, Chart } from '../engine/index.ts';
 import type { CalendarOptions, DaySummary, MonthSummary } from '../calendar/summary.ts';
 import type { SearchQuery, SearchResult } from '../calendar/search.ts';
-import type { HourSummary } from '../calendar/hour.ts';
+import type { HourSummary, MonthProjection } from '../calendar/hour.ts';
 import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
 
 // Omit is NOT distributive over a union: keyof (A|B|C) is only the *common*
@@ -55,4 +55,9 @@ export function computeDayDirections(
   y: number, m: number, d: number, opts: CalendarOptions,
 ): Promise<{ chart: Chart; summary: HourSummary }[]> {
   return send({ kind: 'daydir', y, m, d, opts }, (r) => r.dayDir!);
+}
+export function computeMonthProjection(
+  year: number, month: number, opts: CalendarOptions,
+): Promise<MonthProjection> {
+  return send({ kind: 'monthproj', year, month, opts }, (r) => r.monthProj!);
 }

@@ -1,4 +1,4 @@
-import type { MonthSummary, DaySummary } from '../calendar/summary.ts';
+import type { MonthProjection, DayProjection } from '../calendar/hour.ts';
 import { DayCell } from './DayCell.tsx';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -6,10 +6,10 @@ const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 export function MonthGrid({
   month, today, selected, onSelectDay,
 }: {
-  month: MonthSummary;
+  month: MonthProjection;
   today: { y: number; m: number; d: number };
   selected: { y: number; m: number; d: number } | null;
-  onSelectDay: (day: DaySummary) => void;
+  onSelectDay: (day: DayProjection) => void;
 }) {
   const lead = new Date(month.year, month.month - 1, 1).getDay(); // 0=Sun
   const blanks = Array.from({ length: lead });

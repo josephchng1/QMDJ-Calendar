@@ -1,20 +1,21 @@
 import { useState } from 'react';
-import type { DaySummary, CalendarOptions } from '../calendar/summary.ts';
-import type { ChartInput } from '../types.ts';
-import { useChart } from '../hooks/useChart.ts';
+import type { CalendarOptions } from '../calendar/summary.ts';
+import type { DirHour } from '../hooks/useDayDirections.ts';
 import { HourRow } from './HourRow.tsx';
 import { SummaryHeader } from './SummaryHeader.tsx';
 import { FourPillarsBar } from './FourPillarsBar.tsx';
 import { PalaceGrid } from './PalaceGrid.tsx';
-import { bandColor, BAND_LABEL, scorePercent } from '../calendar/bands.ts';
 
 type Tab = 'hours' | 'chart';
 
+/** Right-hand day panel, v2. The 时辰总览 tab lists 12 hours described by their
+ *  direction counts (not a score); the 奇门盘 tab shows the raw board for the
+ *  selected hour. Charts come from the same `daydir` payload — no extra fetch. */
 export function DayDetailPanel({
-  day, options, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose,
+  date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose,
 }: {
-  day: DaySummary;
-  options: CalendarOptions;
+  date: { y: number; m: number; d: number };
+  hours: DirHour[];
   selectedHour: number;
   onSelectHour: (i: number) => void;
   onPrevDay: () => void;
@@ -22,13 +23,19 @@ export function DayDetailPanel({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('hours');
-  const h = day.hours[selectedHour];
+  const cur = hours[Math.min(selectedHour, hours.length - 1)] ?? hours[0];
+  const chart = cur.chart;
+  const hourStem = chart.pillars.hour.name.charAt(0);
 
-  const input: ChartInput = {
-    y: day.y, m: day.m, d: day.d, hh: h.hh, mm: 0, ...options,
-  };
-  const { chart, loading } = useChart(input);
-  const hourStem = chart ? chart.pillars.hour.name.charAt(0) : undefined;
+  // day tally + best hour (most 大吉 cells, then 吉), skipping 五不遇时 hours.
+  let primeCells = 0, goodCells = 0, bestIndex = 0, bestKey = -1;
+  hours.forEach((h, i) => {
+    primeCells += h.summary.counts.prime;
+    goodCells += h.summary.counts.good;
+    if (h.summary.chartBlocked) return;
+    const k = h.summary.counts.prime * 100 + h.summary.counts.good;
+    if (k > bestKey) { bestKey = k; bestIndex = i; }
+  });
 
   const openChart = (i: number) => { onSelectHour(i); setTab('chart'); };
   const step = (delta: number) => onSelectHour(Math.min(11, Math.max(0, selectedHour + delta)));
@@ -37,11 +44,13 @@ export function DayDetailPanel({
     <div className="panel gold-frame p-4 flex flex-col gap-3" style={{ minHeight: 420 }}>
       <div className="flex items-center gap-2">
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onPrevDay} title="前一天">‹ 日</button>
-        <h2 className="text-base font-semibold">{day.y}年{day.m}月{day.d}日</h2>
+        <h2 className="text-base font-semibold">{date.y}年{date.m}月{date.d}日</h2>
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onNextDay} title="后一天">日 ›</button>
-        <span className="text-xs px-2 py-0.5 rounded-full"
-              style={{ color: bandColor(day.dayBand), border: '1px solid var(--border)' }}>
-          日评 {BAND_LABEL[day.dayBand]} · {scorePercent(day.dayScore)}
+        <span className="text-xs px-2 py-0.5 rounded-full" style={{ border: '1px solid var(--border)' }}>
+          <span style={{ color: 'var(--gold)' }}>大吉 {primeCells}</span>
+          <span style={{ color: 'var(--text-dim)' }}> · </span>
+          <span style={{ color: 'var(--q-excellent)' }}>吉 {goodCells}</span>
+          <span style={{ color: 'var(--text-dim)' }}> 个方位</span>
         </span>
         <button className="seg rounded-lg px-2.5 py-1 text-xs ml-auto" onClick={onClose}>关闭 ✕</button>
       </div>
@@ -55,9 +64,9 @@ export function DayDetailPanel({
 
       {tab === 'hours' && (
         <div className="flex flex-col gap-1">
-          {day.hours.map((hr, i) => (
-            <HourRow key={i} hour={hr} isBest={i === day.bestIndex}
-                     isActive={i === selectedHour} onClick={() => openChart(i)} />
+          {hours.map((h, i) => (
+            <HourRow key={i} branchIndex={i} ganzhi={h.chart.pillars.hour.name} summary={h.summary}
+                     isBest={i === bestIndex} isActive={i === selectedHour} onClick={() => openChart(i)} />
           ))}
         </div>
       )}
@@ -67,16 +76,13 @@ export function DayDetailPanel({
           <div className="flex items-center gap-2">
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}
                     disabled={selectedHour === 0}>← 前一时辰</button>
-            <span className="text-sm gold mx-auto">{h.branch}时 · {h.ganzhi}</span>
+            <span className="text-sm gold mx-auto">{chart.pillars.hour.name}时</span>
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}
                     disabled={selectedHour === 11}>后一时辰 →</button>
           </div>
-          {chart && <SummaryHeader chart={chart} />}
-          {chart && <FourPillarsBar chart={chart} />}
-          {chart && <PalaceGrid board={chart.board} hourStem={hourStem} />}
-          {loading && !chart && (
-            <div className="panel p-8 text-center" style={{ color: 'var(--text-dim)' }}>计算中…</div>
-          )}
+          <SummaryHeader chart={chart} />
+          <FourPillarsBar chart={chart} />
+          <PalaceGrid board={chart.board} hourStem={hourStem} />
         </div>
       )}
     </div>
