@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { V2_BAND_LABEL, V2_BAND_COLOR } from '../calendar/bandsV2.ts';
+import type { Band } from '../calendar/palace.ts';
 
 // Key to the chart's colour + marker vocabulary. Purely explanatory — mirrors the
 // quality tags in qmdata.ts so a reader can decode the palace cells at a glance.
@@ -28,7 +30,16 @@ const ELEMENTS: { v: string; t: string }[] = [
 export function Legend() {
   return (
     <div className="panel p-4 flex flex-col gap-3 text-xs">
-      <Group label="吉凶">
+      <Group label="方位">
+        {(['prime', 'good', 'plain'] as Band[]).map((b) => (
+          <span key={b} className="flex items-center gap-1.5">
+            <span className="swatch" style={{ background: V2_BAND_COLOR[b] }} />
+            <span style={{ color: 'var(--text)' }}>{V2_BAND_LABEL[b]}</span>
+          </span>
+        ))}
+      </Group>
+
+      <Group label="符号">
         {QUALITY.map((q) => (
           <span key={q.t} className="flex items-center gap-1.5">
             <span className="swatch" style={{ background: q.v }} />

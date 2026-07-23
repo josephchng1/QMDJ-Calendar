@@ -13,5 +13,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['packages/engine/tests/**/*.test.ts', 'src/**/*.test.ts'],
+    // buildChart runs the full VSOP87 solar-term solve; range/day tests build
+    // hundreds of charts, so the 5s default is too tight on CI runners.
+    testTimeout: 20000,
   },
 });

@@ -34,8 +34,10 @@ const names = (r: ReturnType<typeof scoreHour>) => r.formations.map((f) => f.nam
 describe('scoreHour — auspicious structure', () => {
   it('天遁 in the 值使 palace scores excellent, not blocked', () => {
     const r = scoreHour(makeChart({
-      dayStem: '乙', hourStem: '乙', zhiShi: 2, zhiFu: 1,
-      over: { 2: { gate: '生门', tianPanStems: ['丙'], diPanStem: '丁' } }, // 天遁 (生门+丙+丁)
+      dayStem: '乙', hourStem: '乙', zhiShi: 9, zhiFu: 1,
+      // 天遁 (生门+丙+丁). Placed in 离9, not 坤2: 生门's home is 艮8, and 坤2 is 8's
+      // 冲宫, so palace 2 would add 反吟 (−35) and mask the 天遁 under test.
+      over: { 9: { gate: '生门', tianPanStems: ['丙'], diPanStem: '丁' } },
     }));
     expect(r.blocked).toBe(false);
     expect(r.band).toBe('excellent');

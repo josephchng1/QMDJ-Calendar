@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { CalendarOptions, DaySummary } from './calendar/summary.ts';
-import { useMonth } from './hooks/useMonth.ts';
-import { useDay } from './hooks/useDay.ts';
+import type { CalendarOptions } from './calendar/summary.ts';
+import type { DayProjection } from './calendar/hour.ts';
+import { useMonthProjection } from './hooks/useMonthProjection.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
 import { PatternsPanel } from './components/PatternsPanel.tsx';
 import { SearchView } from './components/SearchView.tsx';
+import { DirectionBoard } from './components/DirectionBoard.tsx';
+import { useDayDirections } from './hooks/useDayDirections.ts';
 import { Legend } from './components/Legend.tsx';
-import { BAND_LABEL, bandColor } from './calendar/bands.ts';
 
 type Method = 'zhirun' | 'chaibu';
-type View = 'calendar' | 'patterns' | 'search';
+type View = 'calendar' | 'patterns' | 'search' | 'direction';
 
 interface UiState {
   view: View;
@@ -38,7 +39,9 @@ function initialState(): UiState {
   }
 
   return {
-    view: p.get('view') === 'patterns' ? 'patterns' : p.get('view') === 'search' ? 'search' : 'calendar',
+    view: p.get('view') === 'patterns' ? 'patterns'
+      : p.get('view') === 'search' ? 'search'
+      : p.get('view') === 'direction' ? 'direction' : 'calendar',
     year, month, sel,
     hour: p.get('h') ? Math.min(11, Math.max(0, +p.get('h')!)) : 0,
     fx: p.get('fx') || null,
@@ -60,10 +63,20 @@ export default function App() {
     method: ui.method, spiritVariant: ui.spiritVariant, lateZiNextDay: ui.lateZiNextDay,
   }), [ui.method, ui.spiritVariant, ui.lateZiNextDay]);
 
-  const { month, loading } = useMonth(ui.year, ui.month, options);
-  // Selected day computed independently of the loaded month, so ±1-day nav works
-  // cleanly across month boundaries (feature §10.4).
-  const { day: selectedDay } = useDay(ui.sel?.y ?? null, ui.sel?.m ?? 1, ui.sel?.d ?? 1, options);
+  const { month, loading } = useMonthProjection(ui.year, ui.month, options);
+
+  // The selected day's 12 时辰 (per-palace boards) — feeds BOTH the calendar day
+  // panel and the 方位 tab, computed independently of the loaded month so ±1-day
+  // nav works across month boundaries (§10.4).
+  const dayTarget = ui.sel ?? today;
+  const needDay = ui.view === 'direction' || (ui.view === 'calendar' && ui.sel != null);
+  const { hours: dayHours } = useDayDirections(
+    needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options);
+  const dirShift = (delta: number) => setUi((s) => {
+    const base = s.sel ?? today;
+    const dt = new Date(base.y, base.m - 1, base.d + delta);
+    return { ...s, sel: { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() } };
+  });
 
   // deep-link sync
   useEffect(() => {
@@ -83,8 +96,8 @@ export default function App() {
     return { ...s, year: dt.getFullYear(), month: dt.getMonth() + 1, sel: null };
   });
   const goToday = () => setUi((s) => ({ ...s, year: today.y, month: today.m, sel: null }));
-  const selectDay = (dayS: DaySummary) =>
-    setUi((s) => ({ ...s, sel: { y: dayS.y, m: dayS.m, d: dayS.d }, hour: dayS.bestIndex }));
+  const selectDay = (dayP: DayProjection) =>
+    setUi((s) => ({ ...s, sel: { y: dayP.y, m: dayP.m, d: dayP.d }, hour: dayP.peak?.branchIndex ?? 0 }));
 
   // ±1 day, following across month boundaries; keep the current 时辰 and tab.
   const shiftDay = (delta: number) => setUi((s) => {
@@ -114,10 +127,11 @@ export default function App() {
           <Toggle active={ui.view === 'calendar'} onClick={() => setUi((s) => ({ ...s, view: 'calendar' }))}>择日历</Toggle>
           <Toggle active={ui.view === 'patterns'} onClick={() => setUi((s) => ({ ...s, view: 'patterns' }))}>格局</Toggle>
           <Toggle active={ui.view === 'search'} onClick={() => setUi((s) => ({ ...s, view: 'search' }))}>搜索</Toggle>
+          <Toggle active={ui.view === 'direction'} onClick={() => setUi((s) => ({ ...s, view: 'direction' }))}>方位</Toggle>
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
-          {ui.view === 'calendar' && (
+          {(ui.view === 'calendar' || ui.view === 'direction') && (
             <>
               <Toggle active={ui.method === 'zhirun'} onClick={() => setUi((s) => ({ ...s, method: 'zhirun' }))}>置闰</Toggle>
               <Toggle active={ui.method === 'chaibu'} onClick={() => setUi((s) => ({ ...s, method: 'chaibu' }))}>拆补</Toggle>
@@ -137,6 +151,24 @@ export default function App() {
           onOpenSlot={(y, m, d, branchIndex) =>
             setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m }))}
         />
+      ) : ui.view === 'direction' ? (
+        <div className="panel p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => dirShift(-1)}>←</button>
+            <h2 className="text-base font-semibold mx-auto">
+              {dayTarget.y} 年 {dayTarget.m} 月 {dayTarget.d} 日 · 方位吉凶
+            </h2>
+            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => dirShift(1)}>→</button>
+          </div>
+          {dayHours
+            ? <DirectionBoard hours={dayHours} selectedHour={ui.hour}
+                onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))} />
+            : <div className="p-10 text-center" style={{ color: 'var(--text-dim)' }}>计算各方位吉凶…</div>}
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
+            每格为一个方位（时辰×宫）。金=大吉、青=吉、无色=不吉；定级依据经典规则梯（非分数阈值），
+            点格可见 rung 与 reasons。此为置润/拆补盘的方位建议，非个人年命择日。
+          </p>
+        </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
           {/* Calendar */}
@@ -157,17 +189,17 @@ export default function App() {
 
             <Legend />
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
-              每格右上为当日综合评分（0–100），12 段为该日 12 时辰吉凶粗标，底部横条为全日综合。
-              评分为临时启发式（门/星/神 + 五不遇时），非专业格局评分，将由格局注册表取代。
+              每格右上为当日最佳方位（颜色＝峰值等级：金＝大吉、青＝吉），12 段为各时辰最佳等级，
+              ◆ 为全日大吉方位数。等级由经典规则梯判定（非分数阈值）；点日期查看各时辰与方位盘。
             </p>
           </div>
 
           {/* Day detail / hint */}
           <div>
-            {ui.sel && selectedDay ? (
+            {ui.sel && dayHours ? (
               <DayDetailPanel
-                day={selectedDay}
-                options={options}
+                date={ui.sel}
+                hours={dayHours}
                 selectedHour={ui.hour}
                 onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))}
                 onPrevDay={() => shiftDay(-1)}
@@ -179,8 +211,8 @@ export default function App() {
                 <span className="text-sm" style={{ color: 'var(--text-dim)' }}>点选任一日期，查看当日 12 时辰与奇门盘</span>
                 {month && (
                   <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
-                    本月共 {month.days.filter((d) => d.dayBand === 'excellent').length} 天评为
-                    <span style={{ color: bandColor('excellent') }}> {BAND_LABEL.excellent}</span>
+                    本月共 {month.days.filter((d) => d.peak?.band === 'prime').length} 天有
+                    <span style={{ color: 'var(--gold)' }}> 大吉</span> 方位
                   </span>
                 )}
               </div>

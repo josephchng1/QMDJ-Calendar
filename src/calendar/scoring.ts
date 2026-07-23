@@ -58,7 +58,7 @@ const RESCUE_QIYI = ['riqi-rumu', 'qinglong-taozou', 'huoru-jinxiang', 'zhuque-t
 const SANZHA = ['san-zha-zhen', 'san-zha-zhong', 'san-zha-xiu'];
 
 /** Resolve the interaction rules within a single palace's matched formations. */
-function reconcile(list: MatchedFormation[]): MatchedFormation[] {
+export function reconcile(list: MatchedFormation[]): MatchedFormation[] {
   const has = (id: string) => list.some((f) => f.id === id);
   let out = list;
   if (has('qiyi-xianghe')) out = out.filter((f) => f.id !== 'riqi-beixing');   // 吉门 → 和解, not 被刑
