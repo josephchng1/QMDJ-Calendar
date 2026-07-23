@@ -6,11 +6,13 @@ import { MonthGrid } from './components/MonthGrid.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
 import { PatternsPanel } from './components/PatternsPanel.tsx';
 import { SearchView } from './components/SearchView.tsx';
+import { DirectionBoard } from './components/DirectionBoard.tsx';
+import { useDayDirections } from './hooks/useDayDirections.ts';
 import { Legend } from './components/Legend.tsx';
 import { BAND_LABEL, bandColor } from './calendar/bands.ts';
 
 type Method = 'zhirun' | 'chaibu';
-type View = 'calendar' | 'patterns' | 'search';
+type View = 'calendar' | 'patterns' | 'search' | 'direction';
 
 interface UiState {
   view: View;
@@ -38,7 +40,9 @@ function initialState(): UiState {
   }
 
   return {
-    view: p.get('view') === 'patterns' ? 'patterns' : p.get('view') === 'search' ? 'search' : 'calendar',
+    view: p.get('view') === 'patterns' ? 'patterns'
+      : p.get('view') === 'search' ? 'search'
+      : p.get('view') === 'direction' ? 'direction' : 'calendar',
     year, month, sel,
     hour: p.get('h') ? Math.min(11, Math.max(0, +p.get('h')!)) : 0,
     fx: p.get('fx') || null,
@@ -64,6 +68,16 @@ export default function App() {
   // Selected day computed independently of the loaded month, so ±1-day nav works
   // cleanly across month boundaries (feature §10.4).
   const { day: selectedDay } = useDay(ui.sel?.y ?? null, ui.sel?.m ?? 1, ui.sel?.d ?? 1, options);
+
+  // 方位 (v2) view: a day's 12 时辰, each a per-palace direction board.
+  const dirTarget = ui.sel ?? today;
+  const { hours: dirHours } = useDayDirections(
+    ui.view === 'direction' ? dirTarget.y : null, dirTarget.m, dirTarget.d, options);
+  const dirShift = (delta: number) => setUi((s) => {
+    const base = s.sel ?? today;
+    const dt = new Date(base.y, base.m - 1, base.d + delta);
+    return { ...s, sel: { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() } };
+  });
 
   // deep-link sync
   useEffect(() => {
@@ -114,10 +128,11 @@ export default function App() {
           <Toggle active={ui.view === 'calendar'} onClick={() => setUi((s) => ({ ...s, view: 'calendar' }))}>择日历</Toggle>
           <Toggle active={ui.view === 'patterns'} onClick={() => setUi((s) => ({ ...s, view: 'patterns' }))}>格局</Toggle>
           <Toggle active={ui.view === 'search'} onClick={() => setUi((s) => ({ ...s, view: 'search' }))}>搜索</Toggle>
+          <Toggle active={ui.view === 'direction'} onClick={() => setUi((s) => ({ ...s, view: 'direction' }))}>方位</Toggle>
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
-          {ui.view === 'calendar' && (
+          {(ui.view === 'calendar' || ui.view === 'direction') && (
             <>
               <Toggle active={ui.method === 'zhirun'} onClick={() => setUi((s) => ({ ...s, method: 'zhirun' }))}>置闰</Toggle>
               <Toggle active={ui.method === 'chaibu'} onClick={() => setUi((s) => ({ ...s, method: 'chaibu' }))}>拆补</Toggle>
@@ -137,6 +152,24 @@ export default function App() {
           onOpenSlot={(y, m, d, branchIndex) =>
             setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m }))}
         />
+      ) : ui.view === 'direction' ? (
+        <div className="panel p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => dirShift(-1)}>←</button>
+            <h2 className="text-base font-semibold mx-auto">
+              {dirTarget.y} 年 {dirTarget.m} 月 {dirTarget.d} 日 · 方位吉凶
+            </h2>
+            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => dirShift(1)}>→</button>
+          </div>
+          {dirHours
+            ? <DirectionBoard hours={dirHours} selectedHour={ui.hour}
+                onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))} />
+            : <div className="p-10 text-center" style={{ color: 'var(--text-dim)' }}>计算各方位吉凶…</div>}
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
+            每格为一个方位（时辰×宫）。金=大吉、青=吉、无色=不吉；定级依据经典规则梯（非分数阈值），
+            点格可见 rung 与 reasons。此为置润/拆补盘的方位建议，非个人年命择日。
+          </p>
+        </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
           {/* Calendar */}

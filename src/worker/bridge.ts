@@ -3,6 +3,7 @@
 import type { ChartInput, Chart } from '../engine/index.ts';
 import type { CalendarOptions, DaySummary, MonthSummary } from '../calendar/summary.ts';
 import type { SearchQuery, SearchResult } from '../calendar/search.ts';
+import type { HourSummary } from '../calendar/hour.ts';
 import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
 
 // Omit is NOT distributive over a union: keyof (A|B|C) is only the *common*
@@ -49,4 +50,9 @@ export function computeMonth(year: number, month: number, opts: CalendarOptions)
 }
 export function computeSearch(query: SearchQuery): Promise<SearchResult> {
   return send({ kind: 'search', query }, (r) => r.search!);
+}
+export function computeDayDirections(
+  y: number, m: number, d: number, opts: CalendarOptions,
+): Promise<{ chart: Chart; summary: HourSummary }[]> {
+  return send({ kind: 'daydir', y, m, d, opts }, (r) => r.dayDir!);
 }

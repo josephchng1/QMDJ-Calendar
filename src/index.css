@@ -21,6 +21,11 @@
   --q-caution:   #e0b64d; /* amber */
   --q-bad:       #e06a6a; /* red   */
 
+  /* v2 direction bands (§6.1) — only two tinted states; plain is untinted */
+  --band-prime-bg: color-mix(in srgb, var(--gold) 10%, transparent);
+  --band-good-bg:  color-mix(in srgb, var(--q-excellent) 7%, transparent);
+  --band-plain-bg: transparent;
+
   /* five-element accents (stems) */
   --wood:  #6bd67a;
   --fire:  #e06a6a;
