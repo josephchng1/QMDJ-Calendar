@@ -593,7 +593,7 @@ interface DayProjection {
   at the cell level (box / chip / popup-only) is an OPEN question for Joe — matched
   formations stay in `PalaceDetailPopup` until he decides.
   **DISPLAY colour now follows the SCORE, not the rule-ladder band** (Joe,
-  2026-07-24): `scoreBand()` (SCORE_PRIME=25 / SCORE_GOOD=8) drives tint,
+  2026-07-24): `scoreBand()` (SCORE_PRIME=120 / SCORE_GOOD=16, calibrated) drives tint,
   corner-score colour, and hour counts, so colour and number never disagree. The
   assignBand ladder is kept for the click-popup reason trace only. Reverses R4 for
   the UI; revert = point the tint back at `PalaceScore.band`. See §9-R-UI below.

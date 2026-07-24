@@ -297,13 +297,13 @@ corner-score colour, hour 大吉/吉 counts, legend — is now derived from the 
 `scoreBand()` in `bandsV2.ts`:
 
 ```
-score ≥ SCORE_PRIME (25) → 大吉 (gold)
-score ≥ SCORE_GOOD  (8)  → 吉   (teal)
+score ≥ SCORE_PRIME (120) → 大吉 (gold)   ~4% of cells
+score ≥ SCORE_GOOD  (16)  → 吉   (teal)   ~21% of cells
 else                     → 不吉 (no tint)      · blocked → no tint + hatch
 ```
 
-Colour and number can no longer disagree. `SCORE_PRIME`/`SCORE_GOOD` are tuning
-knobs (§8.2). ⚠️ Deliberate reversal of "band by rule ladder, not threshold"
+Colour and number can no longer disagree. `SCORE_PRIME`/`SCORE_GOOD` are calibrated to the real 2026 distribution
+(§8.1) and guarded by `calibration.test.ts`. ⚠️ Deliberate reversal of "band by rule ladder, not threshold"
 (R4/§3.4) **for the UI only** — the rule-ladder `band`/`rung`/`reasons` are kept
 and shown in the palace click-popup as the classical basis. Reverting to
 classical-band colouring is a one-line switch back to `PalaceScore.band`.

@@ -19,8 +19,11 @@ export const V2_BAND_COLOR: Record<Band, string> = {
 // Score thresholds (tuning knobs — §8.2). Formations dominate the score
 // (±30/60/100), symbols are ±5–15, so: a strong 奇门相会 / 吉格 lands 'prime',
 // a plain 吉门 lands 'good', neutral/negative stays 'plain'.
-export const SCORE_PRIME = 25;
-export const SCORE_GOOD = 8;
+// Calibrated 2026-07-24 against the real 2026 distribution (calibration.test.ts):
+// scores are formation-dominated (range ~-160..+418), so these sit high. p96/p75
+// → 大吉 ≈ 4%, 大吉+吉 ≈ 25% (§8.1 target: 2-5% / 20-30%).
+export const SCORE_PRIME = 120;
+export const SCORE_GOOD = 16;
 
 /** The DISPLAY band for a palace — colour follows score (§6.6). Blocked cells are
  *  never tinted (they carry the hatch overlay instead). */
