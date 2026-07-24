@@ -1,10 +1,12 @@
 import type { HourSummary } from '../calendar/hour.ts';
 import { shichenWindow } from '../calendar/bands.ts';
+import { scoreCounts } from '../calendar/bandsV2.ts';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
-/** One 时辰 row, v2: the hour is DESCRIBED by its prime/good direction counts and
- *  its 主/客 favour — never a single score (§6.2). 五不遇时 hours are struck out. */
+/** One 时辰 row: the hour is DESCRIBED by its 大吉/吉 direction counts (from the
+ *  SCORE band, matching the chart colours) and its 主/客 favour — never a single
+ *  score (§6.2). 五不遇时 hours are struck out. */
 export function HourRow({
   branchIndex, ganzhi, summary, isBest, isActive, onClick,
 }: {
@@ -16,7 +18,7 @@ export function HourRow({
   onClick: () => void;
 }) {
   const blocked = summary.chartBlocked;
-  const { prime, good } = summary.counts;
+  const { prime, good } = scoreCounts(summary.palaces);
   const role = summary.hourRoleFavour === 'mover' ? '客' : '主';
 
   return (
@@ -36,7 +38,7 @@ export function HourRow({
       <span className="w-14 text-xs tabular-nums" style={{ color: 'var(--text-dim)' }}>
         {shichenWindow(branchIndex)}
       </span>
-      <span className="text-sm gold tracking-wide">{ganzhi}</span>
+      <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{ganzhi}</span>
 
       {blocked ? (
         <span className="text-xs" style={{ color: 'var(--q-bad)' }}>五不遇时 · 不用</span>

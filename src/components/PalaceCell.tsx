@@ -1,47 +1,29 @@
-import type { ReactNode } from 'react';
 import type { Palace } from '../types.ts';
 import type { PalaceScore } from '../calendar/palace.ts';
-import { gateColor, starColor, spiritColor, stemColor, GATE_META, QUALITY_VAR } from '../qmdata.ts';
-import { V2_BAND_COLOR } from '../calendar/bandsV2.ts';
+import { gateColor, starColor, spiritColor, stemColor } from '../qmdata.ts';
+import { V2_BAND_COLOR, scoreBand, bandTint } from '../calendar/bandsV2.ts';
 
-// One 九宫 cell. Element order top→bottom follows spec §9: 神 → 门 → 星 → 干(天/地) → 支markers.
-// The 时干 (hour stem) is boxed wherever it appears on 天盘/地盘 (feature §10.5).
-//
-// When a `score` is supplied the cell also carries the v2 grading (architecture §6.6):
-//   • band SHADING behind the glyphs (shared bandsV2 tokens — same shades everywhere)
-//   • the ordering SCORE in the bottom-left corner, low-weight
-// Formations are deliberately NOT rendered in the box yet — pending Joe's call (§6.6 ⚠).
+// Palace-number glyph (洛書).
+const NUM: Record<number, string> = {
+  1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九',
+};
+
+// One 九宫 cell (layout locked 2026-07-24, Joe):
+//   • 神 / 门 / 星 stacked in the MIDDLE, large (same size as 天盘)
+//   • 天盘 over 地盘 at the bottom-right, no labels
+//   • four corners carry the symbols we already have: score (TL), 符/使/空/马 (TR),
+//     palace number (BL), 天/地盘 (BR)
+//   • colour of the tint + score follows the SCORE (§6.6); formations are NOT
+//     drawn in the box yet (pending Joe).
 export function PalaceCell({
-  palace, hourStem, score, focused, onClick,
+  palace, score, focused, onClick,
 }: {
   palace: Palace;
-  hourStem?: string;
   score?: PalaceScore;
   focused?: boolean;
   onClick?: () => void;
 }) {
   const isCentre = palace.palace === 5;
-  const borderQ = palace.gate && GATE_META[palace.gate] ? GATE_META[palace.gate].quality : 'neutral';
-  const borderColor = QUALITY_VAR[borderQ];
-
-  // Box a stem when it is the hour stem — marks the acting hour on both plates.
-  const stemNode = (s: string, extra?: string): ReactNode => {
-    const boxed = !!hourStem && s === hourStem;
-    return (
-      <span
-        className={extra}
-        style={{
-          color: stemColor(s),
-          ...(boxed
-            ? { border: '1.5px solid var(--gold)', borderRadius: 4, padding: '0 3px',
-                boxShadow: '0 0 8px rgba(212,175,55,0.35)' }
-            : {}),
-        }}
-      >
-        {s}
-      </span>
-    );
-  };
 
   const markers: { label: string; color: string }[] = [];
   if (palace.isZhiFu) markers.push({ label: '符', color: 'var(--gold)' });
@@ -49,85 +31,91 @@ export function PalaceCell({
   if (palace.isHourKong) markers.push({ label: '空', color: 'var(--text-dim)' });
   if (palace.isMaXing) markers.push({ label: '马', color: 'var(--q-caution)' });
 
+  // ─── centre 中5宫 (image 2): grey 天盘 TL · 神 / 五 / 地盘 along the bottom ───
   if (isCentre) {
     return (
-      <div className="cell relative flex flex-col items-center justify-center p-2 aspect-square"
-           style={{ background: 'var(--bg-cell-2)', border: `1px solid var(--border)`, borderRadius: 10 }}>
-        <div className="text-xs" style={{ color: 'var(--text-dim)' }}>中五宫</div>
-        <div className="text-2xl font-semibold mt-1">
-          {palace.diPanStem ? stemNode(palace.diPanStem) : '—'}
+      <div className="cell relative flex flex-col p-1.5 aspect-square"
+           style={{ background: 'var(--bg-cell-2)', border: '1px solid var(--border)', borderRadius: 10 }}>
+        <div className="text-sm" style={{ color: 'var(--text-dim)' }}>
+          {palace.tianPanStems[0] ?? ''}
+        </div>
+        <div className="flex-1" />
+        <div className="flex items-end justify-between">
+          <span className="text-base font-medium" style={{ color: spiritColor(palace.spirit) }}>
+            {palace.spirit ?? ''}
+          </span>
+          <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{NUM[5]}</span>
+          <span className="text-lg font-semibold" style={{ color: stemColor(palace.diPanStem) }}>
+            {palace.diPanStem ?? ''}
+          </span>
         </div>
       </div>
     );
   }
 
-  const isFocus = palace.isZhiFu || palace.isZhiShi;
-
-  // v2 grading visuals (only when a score is present).
-  const graded = !!score;
+  // display band (colour) follows the score
+  const band = score ? scoreBand(score.score, score.blocked) : 'plain';
   const blocked = !!score?.blocked;
-  const bandColor = score ? V2_BAND_COLOR[score.band] : borderColor;
-  // Tint composites over the solid cell base via ONE color-mix from the shared
-  // band token (§6.7) — prime/good tinted, plain/blocked left at the neutral base.
-  const bg = graded && !blocked && score!.band !== 'plain'
-    ? `color-mix(in srgb, ${V2_BAND_COLOR[score!.band]} 14%, var(--bg-cell))`
-    : 'var(--bg-cell)';
-  const outline = focused ? 'var(--gold-dim)' : `${borderColor}44`;
+  const bandColor = V2_BAND_COLOR[band];
 
   return (
     <div
-      className={`cell relative flex flex-col p-2 aspect-square${isFocus ? ' cell-focus' : ''}${onClick ? ' cursor-pointer' : ''}`}
+      className={`cell relative flex flex-col p-1.5 aspect-square${onClick ? ' cursor-pointer' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
-      style={{ background: bg, border: `1px solid ${outline}`,
-               borderRadius: 10, boxShadow: focused ? '0 0 0 1px var(--gold-dim)' : `inset 0 0 24px ${borderColor}0d`,
-               opacity: blocked ? 0.6 : 1 }}>
-      {/* corner markers (top-right) */}
-      <div className="absolute top-1 right-1 flex gap-1">
-        {markers.map((m, i) => (
-          <span key={i} className="text-[10px] leading-none px-1 py-[1px] rounded"
-                style={{ color: m.color, border: `1px solid ${m.color}55` }}>{m.label}</span>
-        ))}
-      </div>
-
-      {/* 神 */}
-      <div className="text-[13px] font-medium" style={{ color: spiritColor(palace.spirit) }}>
-        {palace.spirit ?? ''}
-      </div>
-      {/* 门 */}
-      <div className="text-sm font-semibold" style={{ color: gateColor(palace.gate) }}>
-        {palace.gate ?? ''}
-      </div>
-      {/* 星 (芮宫 may carry 天禽) */}
-      <div className="text-[13px] flex gap-1 flex-wrap">
-        {palace.stars.map((s) => (
-          <span key={s} style={{ color: starColor(s) }}>{s}</span>
-        ))}
-      </div>
-
-      <div className="flex-1" />
-
-      {/* 干: 天盘 over 地盘 */}
-      <div className="flex items-end justify-between mt-1">
-        <div className="flex gap-1 text-lg font-semibold">
-          {palace.tianPanStems.map((s, i) => <span key={i}>{stemNode(s)}</span>)}
-        </div>
-        <div className="text-base">{stemNode(palace.diPanStem)}</div>
-      </div>
-      <div className="flex justify-between items-end text-[9px] mt-[2px]" style={{ color: 'var(--text-dim)' }}>
-        {/* v2 score in the bottom-left corner — ordering hint only (§6.6, §8.2) */}
-        {graded
-          ? <span className="tabular-nums font-medium" style={{ color: bandColor }}>
-              {blocked ? '✕' : Math.round(score!.score)}
+      style={{
+        background: score ? bandTint(band) : 'var(--bg-cell)',
+        border: `1px solid ${focused ? 'var(--gold-dim)' : 'var(--border)'}`,
+        borderRadius: 10,
+        boxShadow: focused ? '0 0 0 1px var(--gold-dim)' : undefined,
+        opacity: blocked ? 0.6 : 1,
+        backgroundImage: blocked
+          ? 'repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,0.05) 5px 6px)'
+          : undefined,
+      }}
+    >
+      {/* top corners: score (TL) · 符/使/空/马 (TR) */}
+      <div className="flex items-start justify-between leading-none">
+        {score
+          ? <span className="text-[11px] tabular-nums font-medium" style={{ color: bandColor }}>
+              {blocked ? '✕' : Math.round(score.score)}
             </span>
-          : <span>天盘</span>}
-        <span>地盘 {luoshuName(palace.palace)}</span>
+          : <span />}
+        <div className="flex gap-1">
+          {markers.map((m, i) => (
+            <span key={i} className="text-[10px] leading-none px-1 py-[1px] rounded"
+                  style={{ color: m.color, border: `1px solid ${m.color}55` }}>{m.label}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* centre: 神 / 门 / 星 — large, same size as 天盘 */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1">
+        <div className="text-lg leading-tight" style={{ color: spiritColor(palace.spirit) }}>
+          {palace.spirit ?? ''}
+        </div>
+        <div className="text-lg font-semibold leading-tight" style={{ color: gateColor(palace.gate) }}>
+          {palace.gate ?? ''}
+        </div>
+        <div className="text-lg leading-tight flex gap-0.5" style={{ color: starColor(palace.stars[0] ?? '') }}>
+          {palace.stars.map((s) => <span key={s}>{s}</span>)}
+        </div>
+      </div>
+
+      {/* bottom corners: palace number (BL) · 天盘 over 地盘 (BR, no labels) */}
+      <div className="flex items-end justify-between leading-none">
+        <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{NUM[palace.palace]}</span>
+        <div className="flex flex-col items-end leading-tight">
+          <div className="flex gap-0.5 text-lg font-semibold">
+            {palace.tianPanStems.map((s, i) => (
+              <span key={i} style={{ color: stemColor(s) }}>{s}</span>
+            ))}
+          </div>
+          <div className="text-sm" style={{ color: stemColor(palace.diPanStem) }}>
+            {palace.diPanStem ?? ''}
+          </div>
+        </div>
       </div>
     </div>
   );
-}
-
-function luoshuName(p: number): string {
-  return ({ 1: '坎一', 2: '坤二', 3: '震三', 4: '巽四', 5: '中五',
-            6: '乾六', 7: '兑七', 8: '艮八', 9: '离九' } as Record<number, string>)[p] ?? '';
 }

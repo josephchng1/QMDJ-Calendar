@@ -7,15 +7,13 @@ import { PalaceReasons } from './PalaceReasons.tsx';
 // Classic display order 4-9-2 / 3-5-7 / 8-1-6 over the flat palaces[0..8] array.
 const ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
 
-// The 奇门盘 for one 时辰. When `scores` (the hour's v2 PalaceScore[], index-ordered)
-// is supplied, each cell carries band shading + a corner score, and clicking a
-// palace reveals its rule-ladder reasons (architecture §6.6). Without `scores` it
-// renders the raw board only, so other callers stay unaffected.
+// The 奇门盘 for one 时辰. When `scores` (the hour's PalaceScore[], index-ordered)
+// is supplied, each cell is tinted by its SCORE band + shows a corner score, and
+// clicking a palace reveals its rule-ladder reasons (§6.6).
 export function PalaceGrid({
-  board, hourStem, scores,
+  board, scores,
 }: {
   board: Board;
-  hourStem?: string;
   scores?: PalaceScore[];
 }) {
   const [focus, setFocus] = useState<number | null>(null);
@@ -32,7 +30,6 @@ export function PalaceGrid({
               <PalaceCell
                 key={p}
                 palace={board.palaces[p - 1]}
-                hourStem={hourStem}
                 score={score}
                 focused={focus === p}
                 onClick={clickable ? () => setFocus(focus === p ? null : p) : undefined}
@@ -42,7 +39,6 @@ export function PalaceGrid({
         </div>
       </div>
 
-      {/* reason trace — the "why is this 大吉?" answer the ladder produces (§3.4) */}
       {scores && (
         <div className="panel p-3 text-xs" style={{ minHeight: 64 }}>
           {focusPs

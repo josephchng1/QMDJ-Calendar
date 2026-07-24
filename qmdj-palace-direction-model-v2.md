@@ -591,7 +591,12 @@ interface DayProjection {
 - **⚠️ Formations are NOT rendered inside the box yet** (Joe, 2026-07-24). The cell
   shows band tint + corner score + the 神/门/星/干/支 glyphs only. Formation display
   at the cell level (box / chip / popup-only) is an OPEN question for Joe — matched
-  formations stay in `PalaceDetailPopup` until he decides. See §9-R-UI below.
+  formations stay in `PalaceDetailPopup` until he decides.
+  **DISPLAY colour now follows the SCORE, not the rule-ladder band** (Joe,
+  2026-07-24): `scoreBand()` (SCORE_PRIME=25 / SCORE_GOOD=8) drives tint,
+  corner-score colour, and hour counts, so colour and number never disagree. The
+  assignBand ladder is kept for the click-popup reason trace only. Reverses R4 for
+  the UI; revert = point the tint back at `PalaceScore.band`. See §9-R-UI below.
 
 ### 6.2 HourRow direction counts
 
@@ -686,7 +691,7 @@ The book fixes **direction and ordering**; it never fixes **magnitude**. 真正�
 
 **Consequence for testing, and this is the rule that keeps the two apart:** every fixture asserts an **ordering**, never a value. `score(死門@旺) < score(死門@囚)` is a permanent contract. `score(死門@旺) === -78` is not — it breaks the first time anyone tunes a knob, for no benefit.
 
-**Consequence for the product:** after §3.4, the app's **bands** are defensible against the source line by line, and its **rankings within a band** are reasonable. Its **absolute numbers are not** — a 137 does not mean anything a 129 doesn't. Show bands and ordering prominently; keep the raw number small and secondary (§6.1 already does this). Never put a number in user-facing copy that implies precision the tradition cannot supply.
+**Consequence for the product:** after §3.4, the app's **bands** are defensible against the source line by line, and its **rankings within a band** are reasonable. Its **absolute numbers are not** — a 137 does not mean anything a 129 doesn't. Show bands and ordering prominently; keep the raw number small and secondary (§6.1 already does this). Never put a number in user-facing copy that implies precision the tradition cannot supply. **⚠️ Superseded for the UI (2026-07-24, Joe):** colour now FOLLOWS the number (scoreBand) so the two can't contradict; the score's absolute magnitude is still not defensible, but binning it into gold/teal/none is a product choice for consistency, thresholds being tuning knobs.
 
 **Fixtures required** — each carries provenance:
 - **The inversion test (highest priority).** A 死門 in a 旺 state must score **more negative** than the same 死門 in a 囚 state. This is the exact assertion v1 would have failed. Write it first; it is the regression guard on the whole v2 correction.
