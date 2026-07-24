@@ -111,7 +111,7 @@ export function PalaceCell({
               <span key={i} style={{ color: stemColor(s) }}>{s}</span>
             ))}
           </div>
-          <div className="text-sm" style={{ color: stemColor(palace.diPanStem) }}>
+          <div className="text-lg font-semibold" style={{ color: stemColor(palace.diPanStem) }}>
             {palace.diPanStem ?? ''}
           </div>
         </div>

@@ -43,8 +43,11 @@ export const ELEMENT_VAR: Record<Element, string> = {
   wood: 'var(--wood)', fire: 'var(--fire)', earth: 'var(--earth)',
   metal: 'var(--metal)', water: 'var(--water)',
 };
+// Auspiciousness scale — standardised to the 方位 band scale (Joe, 2026-07-24):
+// most auspicious = GOLD, next = TEAL, then grey / orange / red. Gold means
+// "most auspicious" everywhere; 慎 uses a distinct orange (--q-caution), never gold.
 export const QUALITY_VAR: Record<Quality, string> = {
-  excellent: 'var(--q-excellent)', good: 'var(--q-good)', neutral: 'var(--q-neutral)',
+  excellent: 'var(--gold)', good: 'var(--q-excellent)', neutral: 'var(--q-neutral)',
   caution: 'var(--q-caution)', bad: 'var(--q-bad)',
 };
 
