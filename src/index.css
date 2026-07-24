@@ -18,7 +18,7 @@
   --q-excellent: #4dd0c7; /* cyan  */
   --q-good:      #6bd67a; /* green */
   --q-neutral:   #8b93a1; /* grey  */
-  --q-caution:   #e0b64d; /* amber */
+  --q-caution:   #e08a3c; /* orange — distinct from gold (慎/马) */
   --q-bad:       #e06a6a; /* red   */
 
   /* v2 direction bands (§6.1) — only two tinted states; plain is untinted */

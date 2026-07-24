@@ -1,15 +1,18 @@
 import type { ReactNode } from 'react';
 import { V2_BAND_LABEL, V2_BAND_COLOR } from '../calendar/bandsV2.ts';
 import type { Band } from '../calendar/palace.ts';
+import { QUALITY_VAR } from '../qmdata.ts';
 
 // Key to the chart's colour + marker vocabulary. Purely explanatory — mirrors the
 // quality tags in qmdata.ts so a reader can decode the palace cells at a glance.
+// Driven from QUALITY_VAR so the key always matches the actual symbol colours
+// (上吉 = gold = most auspicious, 吉 = teal, 平 = grey, 慎 = orange, 凶 = red).
 const QUALITY: { v: string; t: string }[] = [
-  { v: 'var(--q-excellent)', t: '上吉' },
-  { v: 'var(--q-good)', t: '吉' },
-  { v: 'var(--q-neutral)', t: '平' },
-  { v: 'var(--q-caution)', t: '慎' },
-  { v: 'var(--q-bad)', t: '凶' },
+  { v: QUALITY_VAR.excellent, t: '上吉' },
+  { v: QUALITY_VAR.good, t: '吉' },
+  { v: QUALITY_VAR.neutral, t: '平' },
+  { v: QUALITY_VAR.caution, t: '慎' },
+  { v: QUALITY_VAR.bad, t: '凶' },
 ];
 
 const MARKERS: { label: string; color: string; t: string }[] = [
