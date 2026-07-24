@@ -9,6 +9,7 @@ import { scoreCounts } from '../calendar/bandsV2.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
 import { ACTIVITY_ORDER, activityLabel } from '../calendar/data/presets.ts';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
+import { slotEvent, downloadIcs, googleCalendarUrl } from '../calendar/ics.ts';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -51,6 +52,11 @@ export function DayDetailPanel({
   const emergency = summary.emergencyDirections
     .map((p) => DIRECTION_LABEL[directionOf(p)!] ?? '')
     .filter(Boolean);
+
+  const curIndex = Math.min(selectedHour, hours.length - 1);
+  const calEvent = slotEvent(date, curIndex, summary.palaces);
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const icsName = `qmdj-${date.y}${pad2(date.m)}${pad2(date.d)}-h${curIndex}.ics`;
 
   return (
     <div className="panel gold-frame p-4 flex flex-col gap-3" style={{ minHeight: 420 }}>
@@ -103,6 +109,15 @@ export function DayDetailPanel({
             <Chip text={`宜为${roleText}`} color="var(--gold)" />
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
+          </div>
+
+          {/* add-to-calendar for the selected 时辰 (client-side .ics + Google) */}
+          <div className="flex items-center gap-2 text-xs">
+            <span style={{ color: 'var(--text-dim)' }}>加入日历</span>
+            <button className="seg rounded-lg px-2.5 py-1"
+                    onClick={() => downloadIcs(calEvent, icsName)}>下载 .ics</button>
+            <a className="seg rounded-lg px-2.5 py-1"
+               href={googleCalendarUrl(calEvent)} target="_blank" rel="noopener noreferrer">Google 日历</a>
           </div>
 
           <FourPillarsBar chart={chart} />
