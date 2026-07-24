@@ -186,19 +186,24 @@ Scoring weights live here too (`scoring.ts` as a config table mapping tiers/elem
 App
 ├── Sidebar (collapsible)           節气, 局数, activity presets, include/exclude chips
 ├── CalendarPage
-│   ├── MonthGrid → DayCell         12-segment quality bar, lunar date, 干支 toggle, badges
+│   ├── MonthGrid → DayCell         lunar date, 干支 toggle, badges — NO day shade, NO day score (§6.5)
 │   └── DayDetailPanel (right slide-in)
-│       ├── Tab: 时辰总览 → HourRow (rating, patterns, warnings, +日历)
-│       └── Tab: 奇门盘  → ChartView
+│       ├── HourList → HourRow       direction counts, patterns, warnings, role glyph, +日历
+│       └── ChartView (inline, on the right) ← palace scoring + shading live HERE, not a standalone tab (§6.6)
 ├── ChartView
 │   ├── QualityBanner · Breadcrumb · HourNav (← →)
-│   ├── PalaceGrid → PalaceCell (神/门/星/干/支 order, borders by quality)
+│   ├── PalaceGrid → PalaceCell (神/门/星/干/支 order, band shading + corner score — §6.6)
 │   ├── FourPillarsBar
 │   └── PalaceDetailPopup
 ├── SearchPage → FilterBuilder, ResultsList (ranked), ExportIcs
 ├── ReferencePage                    ← rendered from the data registry (§5)
 └── SettingsPage                     ← writes EngineOptions to localStorage
 ```
+
+**Two UI decisions locked in 2026-07-24 (Joe):** the calendar day cell no longer
+carries a shade or a score (§6.5), and the palace chart is **not** a standalone
+tab — its scores and shading render inside the existing hour chart on the right
+of the day panel (§6.6).
 
 ### 6.2 State & Data Flow
 
@@ -218,6 +223,66 @@ Brute force is genuinely fine here — and simple beats clever:
 ### 6.4 Calendar Export
 
 .ics generation is pure string templating — do it **client-side** in `apps/web` (works offline, no server dependency), with the tRPC `exportIcs` endpoint kept for API parity. Google Calendar URL-scheme links stay as they are.
+
+### 6.5 Calendar day cell — no shade, no score (changed 2026-07-24)
+
+**A day no longer carries an overall shade or an overall score.** The day-level
+number was a projection of nine directions × twelve 時辰 onto one figure, and per
+the v2 per-palace model that roll-up is not a meaningful single quality — so it
+is removed from the calendar rather than shown misleadingly.
+
+The month cell keeps only **navigation/date information**: Gregorian date, lunar
+date, the 干支 toggle, and (optionally) formation badges. No 12-segment quality
+bar, no day-band underline, no heat-map tint. The calendar is a *date picker*,
+not a quality map; quality lives one level down, per hour and per palace (§6.6).
+
+This **reverses §10.3** (the earlier "day score at a glance" backlog item) and
+supersedes the v2 model's `DayProjection` calendar rendering
+(`qmdj-palace-direction-model-v2.md` §5) — the day roll-up may still be *computed*
+for search/ranking, but it is **not rendered** on the calendar.
+
+### 6.6 Palace scoring & shading live in the hour chart — not a separate tab (changed 2026-07-24)
+
+There is already an **hour chart on the right side** of the day panel (the 奇门盘
+/ `ChartView` 九宫 grid for the selected 時辰). Palace band shading and the palace
+score render **there**, on the existing chart. Do **not** add a standalone palace
+tab or page — enrich the chart that is already on screen.
+
+Per palace cell:
+- **Band shading** behind the glyphs, using the shared band tokens (§6.7):
+  `prime` (大吉) and `good` (吉) tinted; `plain` (不吉) untinted — absence of tint
+  is itself the signal. `blocked` renders untinted with a hatch overlay.
+- **Score in one fixed corner** of the cell (change requested 2026-07-24), small
+  and low-weight — an ordering hint, never headline copy (§8.2 of the v2 model:
+  the absolute number is not defensible; the band and ordering are).
+- The 神/门/星/干/支 glyph order and element colours are unchanged.
+
+**⚠️ OPEN — confirm with Joe before building:** whether to render the matched
+**formation(s) inside the palace box**. For now, **do not put formations in the
+box.** Joe will decide later how (and whether) formations surface at the cell
+level — e.g. box, corner chip, or popup-only. Formations remain available in the
+`PalaceDetailPopup`; only the in-box placement is deferred pending Joe's call.
+
+### 6.7 One shared auspiciousness colour scale — kept in sync (changed 2026-07-24)
+
+**Every surface that expresses auspiciousness must draw from one shared token
+set**, so "very auspicious / auspicious / neutral / inauspicious" reads as the
+same colour everywhere it appears — palace shading, hour-row direction counts,
+search results, filter chips, legend, and the reference page. No surface may
+define its own private shade for the same band.
+
+```css
+/* single source of truth — used by PalaceCell, HourRow, SearchResults, Legend */
+--band-prime:  var(--gold);   /* 大吉 — very auspicious */
+--band-good:   var(--cyan);   /* 吉   — auspicious       */
+--band-plain:  transparent;   /* 不吉 — neutral (no tint) */
+--band-blocked: hatch overlay;/* 不用 — excluded          */
+```
+
+Tint fills for shaded surfaces are derived from these base tokens by a single
+`color-mix` step (see the v2 model §6.1), so a change to one token restyles the
+whole app consistently. A shared `<Legend>` component reads the same tokens, so
+the legend can never drift from what the cells show.
 
 ---
 
@@ -257,9 +322,29 @@ Sequenced so accuracy is locked before features, and each phase leaves the app s
 
 ---
 
+### 8.1 UI adjustments — 2026-07-24 (specs updated first, build order below)
+
+Four small, engine-safe presentation changes from Joe. Specs above are updated;
+this is the proposed order (each is pure presentation on the existing engine +
+v2 scoring — no correctness risk):
+
+1. **Shared band tokens (§6.7)** — factor auspiciousness colours into one token
+   set + a `<Legend>` reading them. *Do first: everything else consumes these.*
+2. **Calendar de-scoring (§6.5)** — strip day shade / score / 12-seg bar from
+   `DayCell`; keep date + lunar + 干支 toggle. Small, isolated.
+3. **Palace shading + corner score in the hour chart (§6.6)** — band tint behind
+   glyphs, score in a fixed corner, on the existing `ChartView` grid. Remove the
+   standalone palace tab. **Do not** render formations in the box.
+4. **Confirm-gate:** ask Joe how/whether formations surface at the cell level
+   before building any in-box formation display (§6.6 ⚠️).
+
+Sequence rationale: (1) unblocks (2) and (3); (4) is a question, not code.
+
+---
+
 ## 9. What Explicitly Does *Not* Change
 
-- Visual design, layout, colour language (dark + gold, cyan/green/amber/red quality coding, palace element ordering 神→门→星→干→支).
+- Visual design, layout, colour language (dark + gold, cyan/green/amber/red quality coding, palace element ordering 神→门→星→干→支). **One shared auspiciousness scale (§6.7)** — very-auspicious / auspicious / neutral / inauspicious use the *same* shades on every surface; no per-surface colour drift.
 - The three-method support (拆补 / 置润 / 阴盘) and all existing feature behaviour.
 - tRPC endpoint names and response shapes (so anything already integrated keeps working).
 
@@ -290,10 +375,12 @@ Let the user switch how 八神 / 八门 / 九星 are coloured, choosing between:
   (`--wood/--fire/--earth/--metal/--water`; stems already use them).
 Selectable per symbol class and persisted (localStorage, per §6.2 settings).
 
-### 10.3 Day score at a glance on the calendar (extends §6.1 MonthGrid/DayCell)
-Show each day's overall score **directly in the month cell** — a number or an
-unmistakable rating — on top of the existing 12-segment bar + day-band
-underline, so the strongest days read at a single glance.
+### 10.3 ~~Day score at a glance on the calendar~~ — WITHDRAWN 2026-07-24
+**Reversed.** Joe: the calendar day cell shows **no shade and no score** — the
+day-level roll-up is not a meaningful single quality (see §6.5). This backlog
+item is retired; the month cell stays a plain date picker. Directional quality is
+surfaced per hour and per palace in the hour chart instead (§6.6).
+
 
 ### 10.4 One-click ±1 day on the day panel (extends §6.1 DayDetailPanel)
 Add prev/next-day arrows at the top of the right-hand day panel (mirroring the
