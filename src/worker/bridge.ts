@@ -4,6 +4,7 @@ import type { ChartInput, Chart } from '../engine/index.ts';
 import type { CalendarOptions, DaySummary, MonthSummary } from '../calendar/summary.ts';
 import type { SearchQuery, SearchResult } from '../calendar/search.ts';
 import type { HourSummary, MonthProjection } from '../calendar/hour.ts';
+import type { ApplicationTag } from '../calendar/data/patterns.ts';
 import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
 
 // Omit is NOT distributive over a union: keyof (A|B|C) is only the *common*
@@ -52,9 +53,9 @@ export function computeSearch(query: SearchQuery): Promise<SearchResult> {
   return send({ kind: 'search', query }, (r) => r.search!);
 }
 export function computeDayDirections(
-  y: number, m: number, d: number, opts: CalendarOptions,
+  y: number, m: number, d: number, opts: CalendarOptions, activity?: ApplicationTag,
 ): Promise<{ chart: Chart; summary: HourSummary }[]> {
-  return send({ kind: 'daydir', y, m, d, opts }, (r) => r.dayDir!);
+  return send({ kind: 'daydir', y, m, d, opts, activity }, (r) => r.dayDir!);
 }
 export function computeMonthProjection(
   year: number, month: number, opts: CalendarOptions,

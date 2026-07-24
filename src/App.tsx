@@ -8,6 +8,8 @@ import { PatternsPanel } from './components/PatternsPanel.tsx';
 import { SearchView } from './components/SearchView.tsx';
 import { useDayDirections } from './hooks/useDayDirections.ts';
 import { Legend } from './components/Legend.tsx';
+import { ACTIVITY_ORDER } from './calendar/data/presets.ts';
+import type { ApplicationTag } from './calendar/data/patterns.ts';
 
 type Method = 'zhirun' | 'chaibu';
 type View = 'calendar' | 'patterns' | 'search';
@@ -19,6 +21,7 @@ interface UiState {
   hour: number;                                     // selected 时辰 index 0..11
   fx: string | null;                                // selected 格局 id (patterns view)
   method: Method; spiritVariant: boolean; lateZiNextDay: boolean;
+  activity: ApplicationTag | null;               // 用事 for purpose-mode direction grading
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -46,6 +49,7 @@ function initialState(): UiState {
     method: p.get('mtd') === 'chaibu' ? 'chaibu' : 'zhirun',
     spiritVariant: p.get('sv') === '1',
     lateZiNextDay: p.get('lz') !== '0',
+    activity: (ACTIVITY_ORDER as string[]).includes(p.get('act') ?? '') ? (p.get('act') as ApplicationTag) : null,
   };
 }
 
@@ -68,7 +72,7 @@ export default function App() {
   const dayTarget = ui.sel ?? today;
   const needDay = ui.view === 'calendar' && ui.sel != null;
   const { hours: dayHours } = useDayDirections(
-    needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options);
+    needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options, ui.activity ?? undefined);
 
   // deep-link sync
   useEffect(() => {
@@ -80,6 +84,7 @@ export default function App() {
     if (ui.method === 'chaibu') p.set('mtd', 'chaibu');
     if (ui.spiritVariant) p.set('sv', '1');
     if (!ui.lateZiNextDay) p.set('lz', '0');
+    if (ui.activity) p.set('act', ui.activity);
     history.replaceState(null, '', `?${p.toString()}`);
   }, [ui]);
 
@@ -178,6 +183,8 @@ export default function App() {
                 onPrevDay={() => shiftDay(-1)}
                 onNextDay={() => shiftDay(1)}
                 onClose={() => setUi((s) => ({ ...s, sel: null }))}
+                activity={ui.activity}
+                onSelectActivity={(a) => setUi((s) => ({ ...s, activity: a }))}
               />
             ) : (
               <div className="panel p-8 text-center flex flex-col gap-2" style={{ minHeight: 200 }}>

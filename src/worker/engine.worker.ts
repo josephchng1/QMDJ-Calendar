@@ -11,13 +11,15 @@ import {
   type HourSummary, type MonthProjection,
 } from '../calendar/hour.ts';
 import { searchRange, type SearchQuery, type SearchResult } from '../calendar/search.ts';
+import type { ScoreProfile } from '../calendar/palace.ts';
+import type { ApplicationTag } from '../calendar/data/patterns.ts';
 
 export type WorkerRequest =
   | { id: number; kind: 'chart'; input: ChartInput }
   | { id: number; kind: 'day'; y: number; m: number; d: number; opts: CalendarOptions }
   | { id: number; kind: 'month'; year: number; month: number; opts: CalendarOptions }
   | { id: number; kind: 'search'; query: SearchQuery }
-  | { id: number; kind: 'daydir'; y: number; m: number; d: number; opts: CalendarOptions }
+  | { id: number; kind: 'daydir'; y: number; m: number; d: number; opts: CalendarOptions; activity?: ApplicationTag }
   | { id: number; kind: 'monthproj'; year: number; month: number; opts: CalendarOptions };
 
 export type WorkerResponse = {
@@ -52,9 +54,12 @@ ctx.onmessage = (e: MessageEvent<WorkerRequest>) => {
       case 'daydir': {
         // 12 时辰 of a day, each with the v2 per-palace HourSummary + its raw chart
         // (the board needs the chart's glyphs; the summary carries bands/reasons).
+        const profile: ScoreProfile = req.activity
+          ? { kind: 'purpose', activity: req.activity }
+          : { kind: 'general' };
         const dayDir = HOUR_SAMPLE.map((hh) => {
           const chart = buildChart({ y: req.y, m: req.m, d: req.d, hh, mm: 0, ...req.opts });
-          return { chart, summary: computeHourSummary(chart) };
+          return { chart, summary: computeHourSummary(chart, profile) };
         });
         ctx.postMessage({ id: req.id, dayDir } satisfies WorkerResponse);
         break;

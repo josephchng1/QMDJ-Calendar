@@ -7,6 +7,8 @@ import { PalaceGrid } from './PalaceGrid.tsx';
 import { Chip } from './PalaceReasons.tsx';
 import { scoreCounts } from '../calendar/bandsV2.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
+import { ACTIVITY_ORDER, activityLabel } from '../calendar/data/presets.ts';
+import type { ApplicationTag } from '../calendar/data/patterns.ts';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -16,7 +18,7 @@ type Tab = 'hours' | 'chart';
  *  direction counts; the 奇门盘 tab shows the hour's board WITH per-palace
  *  score-band shading + a corner score (§6.6). */
 export function DayDetailPanel({
-  date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose,
+  date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose, activity, onSelectActivity,
 }: {
   date: { y: number; m: number; d: number };
   hours: DirHour[];
@@ -25,6 +27,8 @@ export function DayDetailPanel({
   onPrevDay: () => void;
   onNextDay: () => void;
   onClose: () => void;
+  activity: ApplicationTag | null;
+  onSelectActivity: (a: ApplicationTag | null) => void;
 }) {
   const [tab, setTab] = useState<Tab>('hours');
   const cur = hours[Math.min(selectedHour, hours.length - 1)] ?? hours[0];
@@ -54,7 +58,17 @@ export function DayDetailPanel({
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onPrevDay} title="前一天">‹ 日</button>
         <h2 className="text-base font-semibold">{date.y}年{date.m}月{date.d}日</h2>
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onNextDay} title="后一天">日 ›</button>
-        <button className="seg rounded-lg px-3 py-1.5 text-xs ml-auto" onClick={onClose}>关闭 ✕</button>
+        <select
+          className="seg rounded-lg px-2 py-1 text-xs ml-auto"
+          value={activity ?? ''}
+          onChange={(e) => onSelectActivity((e.target.value || null) as ApplicationTag | null)}
+          title="用事（按用神择向）"
+          style={{ background: 'var(--bg-cell-2)', color: 'var(--text)', borderColor: activity ? 'var(--gold-dim)' : undefined }}
+        >
+          <option value="">总览</option>
+          {ACTIVITY_ORDER.map((a) => <option key={a} value={a}>{activityLabel(a)}</option>)}
+        </select>
+        <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={onClose}>关闭 ✕</button>
       </div>
 
       <div className="flex gap-1">

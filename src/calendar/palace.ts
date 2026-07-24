@@ -16,7 +16,7 @@ import type { Chart } from '../engine/index.ts';
 import { STEMS } from '../engine/ganzhi.ts';
 import {
   GATES, STARS, SPIRITS, GOOD_GATES, TIER_WEIGHTS,
-  type Door, type Star, type Quality, type ApplicationTag,
+  type Door, type Star, type Spirit, type Quality, type ApplicationTag,
 } from './data/patterns.ts';
 import {
   isLiuYiJiXing, isSanQiRuMu, isHourStemTomb, isSanQiControlled,
@@ -25,6 +25,7 @@ import {
 import { evaluateChart, type MatchedFormation } from './evaluator.ts';
 import { reconcile } from './scoring.ts';
 import { ACTIVITY_PRESETS } from './data/presets.ts';
+import { purposeProfile, YONGSHEN } from './profiles.ts';
 import {
   directionOf, baseFilter, hasEffectiveSanQi, type Direction, type BaseFilterResult,
 } from './direction.ts';
@@ -209,25 +210,39 @@ function formationContribution(f: MatchedFormation, gate: string | null): number
   }
   return TIER_WEIGHTS[f.tier];
 }
-function orderingScore(p: Palace, ev: PalaceEval): number {
+function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number {
+  // Purpose mode: derive 用神 + class emphasis; general mode leaves all ×1 / no bonus.
+  const pp = profile.kind === 'purpose' ? purposeProfile(profile.activity) : null;
+  const wGate = CLASS_WEIGHT.gate * (pp?.classEmphasis.gate ?? 1);
+  const wStar = CLASS_WEIGHT.star * (pp?.classEmphasis.star ?? 1);
+  const wStem = CLASS_WEIGHT.stem * (pp?.classEmphasis.stem ?? 1);
+  const wSpirit = CLASS_WEIGHT.spirit * (pp?.classEmphasis.spirit ?? 1);
+
   let s = 0;
   if (p.gate && GATES[p.gate as Door]) {
-    let g = VALENCE[GATES[p.gate as Door].quality] * amplitude(ev.strength.gate) * CLASS_WEIGHT.gate;
+    let g = VALENCE[GATES[p.gate as Door].quality] * amplitude(ev.strength.gate) * wGate;
     g = applyMenGong(g, ev.menGong);
     s += g;
   }
   for (const star of p.stars) {
-    if (STARS[star as Star]) s += VALENCE[STARS[star as Star].quality] * amplitude(ev.strength.star) * CLASS_WEIGHT.star;
+    if (STARS[star as Star]) s += VALENCE[STARS[star as Star].quality] * amplitude(ev.strength.star) * wStar;
   }
   for (const w of WONDERS) {
-    if (p.tianPanStems.includes(w)) s += WONDER_VALENCE * amplitude(ev.strength.stems[w] ?? null) * CLASS_WEIGHT.stem;
+    if (p.tianPanStems.includes(w)) s += WONDER_VALENCE * amplitude(ev.strength.stems[w] ?? null) * wStem;
   }
   if (p.spirit && SPIRITS[p.spirit as keyof typeof SPIRITS]) {
-    s += VALENCE[SPIRITS[p.spirit as keyof typeof SPIRITS].quality] * CLASS_WEIGHT.spirit;
+    s += VALENCE[SPIRITS[p.spirit as keyof typeof SPIRITS].quality] * wSpirit;
   }
   for (const f of ev.matched) s += formationContribution(f, p.gate); // NOT amplitude-scaled
   if (ev.kongWang) s -= VOID_PENALTY;
   if (isSanQiControlled(p)) s -= CONTROLLED_PENALTY;
+
+  // §4.2 step 9 — 用神 boost: reward palaces carrying this activity's 用神.
+  if (pp) {
+    if (p.gate && pp.yongShen.gates.includes(p.gate as Door)) s += YONGSHEN.gate;
+    if (p.spirit && pp.yongShen.spirits.includes(p.spirit as Spirit)) s += YONGSHEN.spirit;
+    for (const f of ev.matched) if (pp.boostFormations.has(f.id)) s += YONGSHEN.formation;
+  }
   return Math.round(s * 10) / 10;
 }
 
@@ -290,7 +305,7 @@ export function evaluatePalace(
   if (ev.menGong === '制' && p.gate && !GOOD_GATES.includes(p.gate as Door)) badges.push('凶不起');
   if (matched.some((m) => m.id === 'qinglong-taozou' || m.id === 'zhuque-toujiang')) badges.push('为主不害');
 
-  const score = blocked ? BLOCKED_SCORE : orderingScore(p, ev);
+  const score = blocked ? BLOCKED_SCORE : orderingScore(p, ev, profile);
 
   return {
     palace: p.palace,
