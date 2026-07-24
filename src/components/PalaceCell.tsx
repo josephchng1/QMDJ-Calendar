@@ -1,10 +1,25 @@
 import type { ReactNode } from 'react';
 import type { Palace } from '../types.ts';
+import type { PalaceScore } from '../calendar/palace.ts';
 import { gateColor, starColor, spiritColor, stemColor, GATE_META, QUALITY_VAR } from '../qmdata.ts';
+import { V2_BAND_COLOR } from '../calendar/bandsV2.ts';
 
 // One 九宫 cell. Element order top→bottom follows spec §9: 神 → 门 → 星 → 干(天/地) → 支markers.
 // The 时干 (hour stem) is boxed wherever it appears on 天盘/地盘 (feature §10.5).
-export function PalaceCell({ palace, hourStem }: { palace: Palace; hourStem?: string }) {
+//
+// When a `score` is supplied the cell also carries the v2 grading (architecture §6.6):
+//   • band SHADING behind the glyphs (shared bandsV2 tokens — same shades everywhere)
+//   • the ordering SCORE in the bottom-left corner, low-weight
+// Formations are deliberately NOT rendered in the box yet — pending Joe's call (§6.6 ⚠).
+export function PalaceCell({
+  palace, hourStem, score, focused, onClick,
+}: {
+  palace: Palace;
+  hourStem?: string;
+  score?: PalaceScore;
+  focused?: boolean;
+  onClick?: () => void;
+}) {
   const isCentre = palace.palace === 5;
   const borderQ = palace.gate && GATE_META[palace.gate] ? GATE_META[palace.gate].quality : 'neutral';
   const borderColor = QUALITY_VAR[borderQ];
@@ -48,11 +63,26 @@ export function PalaceCell({ palace, hourStem }: { palace: Palace; hourStem?: st
 
   const isFocus = palace.isZhiFu || palace.isZhiShi;
 
+  // v2 grading visuals (only when a score is present).
+  const graded = !!score;
+  const blocked = !!score?.blocked;
+  const bandColor = score ? V2_BAND_COLOR[score.band] : borderColor;
+  // Tint composites over the solid cell base via ONE color-mix from the shared
+  // band token (§6.7) — prime/good tinted, plain/blocked left at the neutral base.
+  const bg = graded && !blocked && score!.band !== 'plain'
+    ? `color-mix(in srgb, ${V2_BAND_COLOR[score!.band]} 14%, var(--bg-cell))`
+    : 'var(--bg-cell)';
+  const outline = focused ? 'var(--gold-dim)' : `${borderColor}44`;
+
   return (
-    <div className={`cell relative flex flex-col p-2 aspect-square${isFocus ? ' cell-focus' : ''}`}
-         style={{ background: 'var(--bg-cell)', border: `1px solid ${borderColor}44`,
-                  borderRadius: 10, boxShadow: `inset 0 0 24px ${borderColor}0d` }}>
-      {/* corner markers */}
+    <div
+      className={`cell relative flex flex-col p-2 aspect-square${isFocus ? ' cell-focus' : ''}${onClick ? ' cursor-pointer' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      style={{ background: bg, border: `1px solid ${outline}`,
+               borderRadius: 10, boxShadow: focused ? '0 0 0 1px var(--gold-dim)' : `inset 0 0 24px ${borderColor}0d`,
+               opacity: blocked ? 0.6 : 1 }}>
+      {/* corner markers (top-right) */}
       <div className="absolute top-1 right-1 flex gap-1">
         {markers.map((m, i) => (
           <span key={i} className="text-[10px] leading-none px-1 py-[1px] rounded"
@@ -84,8 +114,14 @@ export function PalaceCell({ palace, hourStem }: { palace: Palace; hourStem?: st
         </div>
         <div className="text-base">{stemNode(palace.diPanStem)}</div>
       </div>
-      <div className="flex justify-between text-[9px] mt-[2px]" style={{ color: 'var(--text-dim)' }}>
-        <span>天盘</span><span>地盘 {luoshuName(palace.palace)}</span>
+      <div className="flex justify-between items-end text-[9px] mt-[2px]" style={{ color: 'var(--text-dim)' }}>
+        {/* v2 score in the bottom-left corner — ordering hint only (§6.6, §8.2) */}
+        {graded
+          ? <span className="tabular-nums font-medium" style={{ color: bandColor }}>
+              {blocked ? '✕' : Math.round(score!.score)}
+            </span>
+          : <span>天盘</span>}
+        <span>地盘 {luoshuName(palace.palace)}</span>
       </div>
     </div>
   );
