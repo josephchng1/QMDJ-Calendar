@@ -30,11 +30,9 @@ export function DayDetailPanel({
   const summary = cur.summary;
   const hourStem = chart.pillars.hour.name.charAt(0);
 
-  // day tally + best hour (most 大吉 cells, then 吉), skipping 五不遇时 hours.
-  let primeCells = 0, goodCells = 0, bestIndex = 0, bestKey = -1;
+  // best hour (most 大吉 cells, then 吉), skipping 五不遇时 hours — for row highlight only.
+  let bestIndex = 0, bestKey = -1;
   hours.forEach((h, i) => {
-    primeCells += h.summary.counts.prime;
-    goodCells += h.summary.counts.good;
     if (h.summary.chartBlocked) return;
     const k = h.summary.counts.prime * 100 + h.summary.counts.good;
     if (k > bestKey) { bestKey = k; bestIndex = i; }
@@ -54,12 +52,6 @@ export function DayDetailPanel({
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onPrevDay} title="前一天">‹ 日</button>
         <h2 className="text-base font-semibold">{date.y}年{date.m}月{date.d}日</h2>
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onNextDay} title="后一天">日 ›</button>
-        <span className="text-xs px-2 py-0.5 rounded-full" style={{ border: '1px solid var(--border)' }}>
-          <span style={{ color: 'var(--gold)' }}>大吉 {primeCells}</span>
-          <span style={{ color: 'var(--text-dim)' }}> · </span>
-          <span style={{ color: 'var(--q-excellent)' }}>吉 {goodCells}</span>
-          <span style={{ color: 'var(--text-dim)' }}> 个方位</span>
-        </span>
         <button className="seg rounded-lg px-3 py-1.5 text-xs ml-auto" onClick={onClose}>关闭 ✕</button>
       </div>
 
