@@ -222,7 +222,7 @@ Brute force is genuinely fine here — and simple beats clever:
 
 ### 6.4 Calendar Export
 
-.ics generation is pure string templating — do it **client-side** in `apps/web` (works offline, no server dependency), with the tRPC `exportIcs` endpoint kept for API parity. Google Calendar URL-scheme links stay as they are.
+.ics generation is pure string templating — do it **client-side** in `apps/web` (works offline, no server dependency), with the tRPC `exportIcs` endpoint kept for API parity. Google Calendar URL-scheme links stay as they are. **Built 2026-07-24** (`ics.ts`): the day panel's 奇门盘 has an *加入日历* row — 下载 .ics (client-side Blob) and a Google Calendar template link — for the selected 时辰, titled with its 大吉/吉 directions. Times emitted as UTC (…Z) so both place correctly.
 
 ### 6.5 Calendar day cell — no shade, no score (changed 2026-07-24)
 
