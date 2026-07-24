@@ -162,8 +162,8 @@ export default function App() {
 
             <Legend />
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
-              日历只作选日，不显示当日总评（日的总分无实义）。点选任一日期，右侧奇门盘按经典规则梯
-              为各时辰、各方位定级并上色（金＝大吉、青＝吉、无色＝不吉），分数只作同级排序。
+              日历只作选日，不显示当日总评。点选任一日期，右侧奇门盘按分数为各方位上色
+              （金＝大吉、青＝吉、无色＝不吉），颜色与分数一致；点格可见经典定级依据（rung·reasons）。
             </p>
           </div>
 

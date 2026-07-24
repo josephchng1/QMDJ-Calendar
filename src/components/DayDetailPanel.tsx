@@ -5,14 +5,16 @@ import { SummaryHeader } from './SummaryHeader.tsx';
 import { FourPillarsBar } from './FourPillarsBar.tsx';
 import { PalaceGrid } from './PalaceGrid.tsx';
 import { Chip } from './PalaceReasons.tsx';
+import { scoreCounts } from '../calendar/bandsV2.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
+
+const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
 type Tab = 'hours' | 'chart';
 
 /** Right-hand day panel, v2. The 时辰总览 tab lists 12 hours described by their
- *  direction counts (not a score); the 奇门盘 tab shows the hour's board WITH its
- *  per-palace band shading + corner score (architecture §6.6) — the palace grading
- *  lives here, not in a standalone tab. Charts come from the same `daydir` payload. */
+ *  direction counts; the 奇门盘 tab shows the hour's board WITH per-palace
+ *  score-band shading + a corner score (§6.6). */
 export function DayDetailPanel({
   date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose,
 }: {
@@ -28,13 +30,13 @@ export function DayDetailPanel({
   const cur = hours[Math.min(selectedHour, hours.length - 1)] ?? hours[0];
   const chart = cur.chart;
   const summary = cur.summary;
-  const hourStem = chart.pillars.hour.name.charAt(0);
 
-  // best hour (most 大吉 cells, then 吉), skipping 五不遇时 hours — for row highlight only.
+  // best hour (most 大吉 by score, then 吉), skipping 五不遇时 — for row highlight only.
   let bestIndex = 0, bestKey = -1;
   hours.forEach((h, i) => {
     if (h.summary.chartBlocked) return;
-    const k = h.summary.counts.prime * 100 + h.summary.counts.good;
+    const c = scoreCounts(h.summary.palaces);
+    const k = c.prime * 100 + c.good;
     if (k > bestKey) { bestKey = k; bestIndex = i; }
   });
 
@@ -76,7 +78,7 @@ export function DayDetailPanel({
           <div className="flex items-center gap-2">
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}
                     disabled={selectedHour === 0}>← 前一时辰</button>
-            <span className="text-sm gold mx-auto">{chart.pillars.hour.name}时</span>
+            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[selectedHour]}时</span>
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}
                     disabled={selectedHour === 11}>后一时辰 →</button>
           </div>
@@ -90,7 +92,7 @@ export function DayDetailPanel({
           </div>
 
           <FourPillarsBar chart={chart} />
-          <PalaceGrid board={chart.board} hourStem={hourStem} scores={summary.palaces} />
+          <PalaceGrid board={chart.board} scores={summary.palaces} />
         </div>
       )}
     </div>

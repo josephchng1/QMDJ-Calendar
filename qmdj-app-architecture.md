@@ -284,6 +284,43 @@ Tint fills for shaded surfaces are derived from these base tokens by a single
 whole app consistently. A shared `<Legend>` component reads the same tokens, so
 the legend can never drift from what the cells show.
 
+### 6.8 Palace colour follows the SCORE; cell layout redesign (changed 2026-07-24)
+
+Two decisions from Joe that revise §6.6 and, for display, override §3.4 of the
+palace-direction model:
+
+**(a) Colour follows the score — not the rule-ladder band.** Joe flagged that a
+cell could show a tinted (吉) background yet a negative score, because the band
+(`assignBand`, classical ladder) and the ordering `score` are computed
+independently. To remove that contradiction, the **displayed** band — palace tint,
+corner-score colour, hour 大吉/吉 counts, legend — is now derived from the score by
+`scoreBand()` in `bandsV2.ts`:
+
+```
+score ≥ SCORE_PRIME (25) → 大吉 (gold)
+score ≥ SCORE_GOOD  (8)  → 吉   (teal)
+else                     → 不吉 (no tint)      · blocked → no tint + hatch
+```
+
+Colour and number can no longer disagree. `SCORE_PRIME`/`SCORE_GOOD` are tuning
+knobs (§8.2). ⚠️ Deliberate reversal of "band by rule ladder, not threshold"
+(R4/§3.4) **for the UI only** — the rule-ladder `band`/`rung`/`reasons` are kept
+and shown in the palace click-popup as the classical basis. Reverting to
+classical-band colouring is a one-line switch back to `PalaceScore.band`.
+
+**(b) Cell layout (image-matched).** 神 / 门 / 星 stacked in the **middle**, large
+(same size as 天盘). 天盘 over 地盘 at the **bottom-right**, no 天/地 labels. Four
+corners carry existing symbols: **score** (top-left), **符/使/空/马** (top-right),
+**palace number** (bottom-left), **天/地盘** (bottom-right). 中5宫 follows the
+second reference: grey 天盘 top-left, 神 · 五 · 地盘 along the bottom.
+
+**(c) Gold hour-pillar removed** from the 奇门盘 view (already in `FourPillarsBar`);
+the gold box on the 时干 (old §10.5) is dropped too.
+
+**⚠️ Not implemented — glyphs not yet computed** (as §10.6 warned): the small grey
+stem in the top-left corner and the bottom-left 八神-rotation label in the
+reference. Meaning unconfirmed, so omitted rather than guessed — for Joe to define.
+
 ---
 
 ## 7. Server & Database (Deliberately Thin)
