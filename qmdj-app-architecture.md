@@ -321,6 +321,18 @@ the gold box on the 时干 (old §10.5) is dropped too.
 stem in the top-left corner and the bottom-left 八神-rotation label in the
 reference. Meaning unconfirmed, so omitted rather than guessed — for Joe to define.
 
+### 6.9 Purpose mode (用神) — direction grading per 用事 (built 2026-07-24)
+
+The day panel's 奇门盘 now has a **用事 selector** (总览 = general, or one of the
+activity presets). Choosing a 用事 switches the per-palace grading to purpose mode
+(`profiles.ts`, palace step-9): palaces carrying that activity's 用神 (favoured
+gate / deity / boost-formations) score higher, and the 用神綱領 emphasises 八门 for
+人事 activities / 九星 for 方位 ones. Colour still follows the (now purpose-adjusted)
+score, so the board re-grades toward what's good *for that matter*. General-mode
+scoring — and the calibration gate — are untouched. The 用神 weights (`YONGSHEN`,
+`classEmphasis`) are tuning knobs for Joe to validate. Search (v1) already had its
+own activity boost; this brings the same idea to the v2 direction board.
+
 ---
 
 ## 7. Server & Database (Deliberately Thin)
