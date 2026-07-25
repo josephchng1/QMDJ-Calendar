@@ -5,15 +5,19 @@
 # with the Zhirun engine vendored under src/engine/. Two gates that mean
 # something and stay green:
 #   1. typecheck  — tsc --noEmit over src/ (catches engine + UI type breaks)
-#   2. build      — vite build must produce a production bundle
+#   2. fixtures   — golden fixture schema + provenance gate (no-fabrication rule)
+#   3. tests      — Vitest: golden truth, engine invariants, calendar/scoring
+#   4. build      — vite build must produce a production bundle
 #
 # The build artifact is uploaded so you can preview any commit's output.
 #
 # Runs on PRs into main, on pushes to main, and on demand.
 #
 # HARDENING (later, not blocking):
-#   • Grow the Vitest suite: bless golden fixtures (packages/engine/tests/
-#     golden/) and add boundary/parity/perf layers as they land.
+#   • Boundary layer (L2): solar-term ±1min, 晚子时, 换旬 — not written yet.
+#   • Parity (L4) and perf budgets (L5) as they land.
+#   • Cross-check the golden fixtures against a SECOND independent reference —
+#     they currently carry one source each, so the validator warns by design.
 #   • Add a deploy job when a production host is chosen.
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
@@ -46,7 +50,10 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
 
-      - name: Unit tests (Vitest — engine invariants + golden fixtures)
+      - name: Validate golden fixtures (schema + provenance)
+        run: npm run test:fixtures
+
+      - name: Unit tests (Vitest — golden fixtures + engine invariants)
         run: npm test
 
       - name: Build (vite)
