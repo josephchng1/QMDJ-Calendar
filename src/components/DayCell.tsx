@@ -1,13 +1,17 @@
-import type { DayProjection } from '../calendar/hour.ts';
-
 /** One calendar day. Per architecture §6.5 the day cell carries NO shade and NO
  *  score — the day-level roll-up is not a meaningful single quality, so the cell
  *  is a plain date picker. Directional quality lives one level down, per hour and
- *  per palace, in the day panel's 奇门盘 chart (§6.6). */
+ *  per palace, in the day panel's 奇门盘 chart (§6.6).
+ *
+ *  It therefore takes a bare date. It used to take a computed DayProjection while
+ *  rendering nothing but the day number, which forced the calendar to project the
+ *  entire month — 372 charts — to draw a grid of numbers. */
+export interface CalendarDay { y: number; m: number; d: number }
+
 export function DayCell({
   day, isToday, isSelected, onClick,
 }: {
-  day: DayProjection;
+  day: CalendarDay;
   isToday: boolean;
   isSelected: boolean;
   onClick: () => void;

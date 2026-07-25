@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildChart } from '../engine/index.ts';
-import { computeHourSummary, computeDayProjection, hourRoleFavour } from './hour.ts';
+import { computeHourSummary, computeDayProjection, peakCellOf, hourRoleFavour } from './hour.ts';
+import { HOUR_SAMPLE } from './summary.ts';
 import type { Band } from './palace.ts';
 
 const BANDS: Band[] = ['prime', 'good', 'plain'];
@@ -57,5 +58,21 @@ describe('computeDayProjection — the day is a PROJECTION, not a mean', () => {
       expect(BANDS).toContain(proj.peak.band);
       expect(proj.peak.palace).toBeGreaterThanOrEqual(1);
     }
+  });
+});
+
+describe('peakCellOf — one peak implementation, shared', () => {
+  // The day panel derives a freshly picked day's opening 时辰 from the 12 时辰 it
+  // already loaded, instead of the calendar projecting the whole month for it.
+  // That is only safe while both paths agree on what "peak" means.
+  it("reproduces computeDayProjection's peak from the same 12 时辰", () => {
+    const summaries = HOUR_SAMPLE.map((hh) =>
+      computeHourSummary(buildChart({ y: 2026, m: 7, d: 6, hh, mm: 0 })));
+    expect(peakCellOf(summaries)).toEqual(computeDayProjection(2026, 7, 6).peak);
+  });
+
+  it('has no peak when there is nothing to rank', () => {
+    expect(peakCellOf([])).toBeNull();
+    expect(peakCellOf([{ chartBlocked: true, palaces: [] }])).toBeNull();
   });
 });
