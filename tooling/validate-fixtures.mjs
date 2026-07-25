@@ -146,6 +146,8 @@ if (files.length === 0) {
 }
 
 const seenIds = new Set();
+const singleSource = [];
+const notCrossChecked = [];
 
 for (const file of files) {
   const path = join(GOLDEN_DIR, file);
@@ -175,21 +177,32 @@ for (const file of files) {
   }
   seenIds.add(data.id);
 
-  // Provenance depth warning (Phase 1 exit criterion: 2 independent refs)
+  // Provenance depth (Phase 1 exit criterion: 2 independent refs).
+  // Collected, not printed per-file: one warning per fixture per rule is dozens
+  // of identical lines, which is how a gate stops being read.
   const sourceNames = new Set((data.sources ?? []).map((s) => s.name));
-  if (sourceNames.size < 2) {
-    console.warn(
-      `⚠ ${file}: only ${sourceNames.size} independent source(s) — ` +
-        'Phase 1 exit criterion asks for 2. Not blocking, but flagged.'
-    );
-    warnings++;
-  }
-  if (data.verified?.crossChecked !== true) {
-    console.warn(`⚠ ${file}: verified.crossChecked is not true yet.`);
-    warnings++;
-  }
+  if (sourceNames.size < 2) singleSource.push(data.id);
+  if (data.verified?.crossChecked !== true) notCrossChecked.push(data.id);
 
   console.log(`✓ ${file} (${data.id})`);
+}
+
+const brief = (ids) => (ids.length <= 3 ? ids.join(', ') : `${ids.slice(0, 3).join(', ')} … +${ids.length - 3} more`);
+
+if (singleSource.length) {
+  console.warn(
+    `\n⚠ ${singleSource.length}/${files.length} fixture(s) rest on a single source — ` +
+      '§4.4 asks for two independent references. Not blocking.\n' +
+      `    ${brief(singleSource)}`
+  );
+  warnings++;
+}
+if (notCrossChecked.length) {
+  console.warn(
+    `⚠ ${notCrossChecked.length}/${files.length} fixture(s) have verified.crossChecked !== true.\n` +
+      `    ${brief(notCrossChecked)}`
+  );
+  warnings++;
 }
 
 console.log(
