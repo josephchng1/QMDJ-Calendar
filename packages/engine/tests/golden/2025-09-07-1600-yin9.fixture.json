@@ -1,6 +1,6 @@
 {
   "id": "2025-09-07-1600-yin9",
-  "description": "己卯 壬申 阴遁9局 — 2025-09-07 16:00 (IMG_7530). 白露日 16:00, 精确交节 16:51 前. Transcribed from the reference-app screenshot; 中五宫 was not transcribed, so only the 8 outer palaces are asserted. ⚠ DELIBERATE DIVERGENCE FROM THE SCREENSHOT: the app displays month 乙酉 because it switches the month pillar at day granularity, but 白露 crosses at 16:51 — after this 16:00 instant. The expected month here is 甲申, the classical rule the engine implements (§4.3 Bug 1). Every other field is the app's displayed value.",
+  "description": "己卯 壬申 阴遁9局 — 2025-09-07 16:00 (IMG_7530). 白露日 16:00, 精确交节 16:51 前. Transcribed from the reference-app screenshot; 中五宫 was not transcribed, so only the 8 outer palaces are asserted. ⚠ DIVERGES FROM THE SCREENSHOT, DELIBERATELY. 白露 crosses at 16:51, after this 16:00 instant, so the classical rule (§4.3 Bug 1) puts this in 甲申 — the app displays 乙酉. The app is NOT self-consistent about this: fixture 2025-02-03-1232-yang9 (IMG_5811) is the same situation — 立春 crossing at 22:10, chart at 12:32 — and there the app correctly does NOT switch (年月未换, month 丁丑). Same case, opposite behaviour, so there is no consistent app rule to follow and this is treated as an app quirk. Every other field is as displayed.",
   "sources": [
     {
       "name": "时家奇门(转盘) reference app screenshot",
