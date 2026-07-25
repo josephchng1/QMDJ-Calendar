@@ -95,35 +95,60 @@ export interface DayProjection {
 const BRANCHES_CN = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 const rankBand = (b: Band): number => (b === 'prime' ? 2 : b === 'good' ? 1 : 0);
 
+/**
+ * The day's peak cell — the single best (band, then score) palace across the 12
+ * 时辰, skipping 五不遇时 hours, 中5, and blocked cells. Ties keep the earliest
+ * hour/palace seen.
+ *
+ * Split out of computeDayProjection so the day panel can derive a day's opening
+ * 时辰 from the 12 时辰 it already loads. Before, the only way to learn a day's
+ * peak was to project the whole month — which made the calendar grid compute 372
+ * charts to render a row of date numbers (§6.5: the grid is a date picker).
+ */
+export function peakCellOf(
+  summaries: Pick<HourSummary, 'chartBlocked' | 'palaces'>[],
+): PeakCell | null {
+  let peak: PeakCell | null = null;
+  summaries.forEach((hs, branchIndex) => {
+    if (hs.chartBlocked) return;
+    for (const ps of hs.palaces) {
+      if (ps.palace === 5 || ps.blocked) continue;
+      if (peak == null
+        || rankBand(ps.band) > rankBand(peak.band)
+        || (rankBand(ps.band) === rankBand(peak.band) && ps.score > peak.score)) {
+        peak = {
+          branchIndex, branch: BRANCHES_CN[branchIndex],
+          palace: ps.palace, direction: ps.direction, score: ps.score, band: ps.band,
+        };
+      }
+    }
+  });
+  return peak;
+}
+
 export function computeDayProjection(
   y: number, m: number, d: number,
   opts: CalendarOptions = {}, profile: ScoreProfile = { kind: 'general' },
 ): DayProjection {
-  let peak: PeakCell | null = null;
+  const summaries: HourSummary[] = [];
   const hours: HourBar[] = HOUR_SAMPLE.map((hh, branchIndex) => {
     const chart = buildChart({ y, m, d, hh, mm: 0, ...opts });
     const hs = computeHourSummary(chart, profile);
+    summaries.push(hs);
     let prime = 0, good = 0, bestBand: Band = 'plain';
     if (!hs.chartBlocked) {
       for (const ps of hs.palaces) {
         if (ps.palace === 5 || ps.blocked) continue;
         if (ps.band === 'prime') { prime++; bestBand = 'prime'; }
         else if (ps.band === 'good') { good++; if (bestBand !== 'prime') bestBand = 'good'; }
-        if (peak == null
-          || rankBand(ps.band) > rankBand(peak.band)
-          || (rankBand(ps.band) === rankBand(peak.band) && ps.score > peak.score)) {
-          peak = {
-            branchIndex, branch: BRANCHES_CN[branchIndex],
-            palace: ps.palace, direction: ps.direction, score: ps.score, band: ps.band,
-          };
-        }
       }
     }
     return { branchIndex, bestBand, blocked: hs.chartBlocked, prime, good };
   });
 
   return {
-    y, m, d, peak,
+    y, m, d,
+    peak: peakCellOf(summaries),
     primeCells: hours.reduce((a, h) => a + h.prime, 0),
     goodCells: hours.reduce((a, h) => a + h.good, 0),
     blockedHours: hours.filter((h) => h.blocked).length,

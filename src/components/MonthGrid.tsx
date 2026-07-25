@@ -1,18 +1,29 @@
-import type { MonthProjection, DayProjection } from '../calendar/hour.ts';
-import { DayCell } from './DayCell.tsx';
+import { DayCell, type CalendarDay } from './DayCell.tsx';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
+/** Days of a civil month. Deliberately a local one-liner rather than an import of
+ *  daysInMonth from summary.ts, which would pull the engine into the calendar
+ *  chunk for what is a Date call. */
+function monthDays(year: number, month: number): CalendarDay[] {
+  const n = new Date(year, month, 0).getDate();
+  return Array.from({ length: n }, (_, i) => ({ y: year, m: month, d: i + 1 }));
+}
+
+/** The month grid is a date picker and nothing else (§6.5) — it takes a year and
+ *  a month, not a computed MonthProjection. */
 export function MonthGrid({
-  month, today, selected, onSelectDay,
+  year, month, today, selected, onSelectDay,
 }: {
-  month: MonthProjection;
+  year: number;
+  month: number;
   today: { y: number; m: number; d: number };
   selected: { y: number; m: number; d: number } | null;
-  onSelectDay: (day: DayProjection) => void;
+  onSelectDay: (day: CalendarDay) => void;
 }) {
-  const lead = new Date(month.year, month.month - 1, 1).getDay(); // 0=Sun
+  const lead = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const blanks = Array.from({ length: lead });
+  const days = monthDays(year, month);
 
   return (
     <div>
@@ -26,7 +37,7 @@ export function MonthGrid({
       </div>
       <div className="grid grid-cols-7 gap-1">
         {blanks.map((_, i) => <div key={`b${i}`} />)}
-        {month.days.map((day) => {
+        {days.map((day) => {
           const isToday = today.y === day.y && today.m === day.m && today.d === day.d;
           const isSel = !!selected && selected.y === day.y && selected.m === day.m && selected.d === day.d;
           return (

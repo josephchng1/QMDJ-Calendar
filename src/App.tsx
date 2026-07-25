@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import type { CalendarOptions } from './calendar/summary.ts';
-import type { DayProjection } from './calendar/hour.ts';
-import { useMonthProjection } from './hooks/useMonthProjection.ts';
+import { peakCellOf } from './calendar/hour.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
+import type { CalendarDay } from './components/DayCell.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
 import { PatternsPanel } from './components/PatternsPanel.tsx';
 import { SearchView } from './components/SearchView.tsx';
@@ -19,6 +19,7 @@ interface UiState {
   year: number; month: number;                     // displayed month (1..12)
   sel: { y: number; m: number; d: number } | null; // selected day
   hour: number;                                     // selected 时辰 index 0..11
+  autoPeak: boolean;                                // hour not chosen yet — jump to the day's peak 时辰 once it loads
   fx: string | null;                                // selected 格局 id (patterns view)
   method: Method; spiritVariant: boolean; lateZiNextDay: boolean;
   activity: ApplicationTag | null;               // 用事 for purpose-mode direction grading
@@ -45,6 +46,7 @@ function initialState(): UiState {
       : p.get('view') === 'search' ? 'search' : 'calendar',
     year, month, sel,
     hour: p.get('h') ? Math.min(11, Math.max(0, +p.get('h')!)) : 0,
+    autoPeak: false,                 // a deep link's 时辰 is explicit — never overridden
     fx: p.get('fx') || null,
     method: p.get('mtd') === 'chaibu' ? 'chaibu' : 'zhirun',
     spiritVariant: p.get('sv') === '1',
@@ -65,14 +67,23 @@ export default function App() {
     method: ui.method, spiritVariant: ui.spiritVariant, lateZiNextDay: ui.lateZiNextDay,
   }), [ui.method, ui.spiritVariant, ui.lateZiNextDay]);
 
-  const { month, loading } = useMonthProjection(ui.year, ui.month, options);
-
   // The selected day's 12 时辰 (per-palace boards) — feeds the day panel, computed
   // independently of the loaded month so ±1-day nav works across month boundaries.
   const dayTarget = ui.sel ?? today;
   const needDay = ui.view === 'calendar' && ui.sel != null;
   const { hours: dayHours } = useDayDirections(
     needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options, ui.activity ?? undefined);
+
+  // Opening 时辰 for a freshly picked day. The calendar no longer projects the
+  // month (§6.5), so the peak comes from that day's own 12 时辰 once they arrive —
+  // the same cell computeDayProjection would have reported. Layout effect so the
+  // panel never paints on 子时 first. Fires only for a calendar pick (autoPeak);
+  // an explicit hour — deep link, ±1 day, hour row, search slot — always wins.
+  useLayoutEffect(() => {
+    if (!ui.autoPeak || !dayHours) return;
+    const peak = peakCellOf(dayHours.map((h) => h.summary));
+    setUi((s) => (s.autoPeak ? { ...s, hour: peak?.branchIndex ?? 0, autoPeak: false } : s));
+  }, [ui.autoPeak, dayHours]);
 
   // deep-link sync
   useEffect(() => {
@@ -93,15 +104,16 @@ export default function App() {
     return { ...s, year: dt.getFullYear(), month: dt.getMonth() + 1, sel: null };
   });
   const goToday = () => setUi((s) => ({ ...s, year: today.y, month: today.m, sel: null }));
-  const selectDay = (dayP: DayProjection) =>
-    setUi((s) => ({ ...s, sel: { y: dayP.y, m: dayP.m, d: dayP.d }, hour: dayP.peak?.branchIndex ?? 0 }));
+  const selectDay = (day: CalendarDay) =>
+    setUi((s) => ({ ...s, sel: day, hour: 0, autoPeak: true }));
 
   // ±1 day, following across month boundaries; keep the current 时辰 and tab.
   const shiftDay = (delta: number) => setUi((s) => {
     if (!s.sel) return s;
     const dt = new Date(s.sel.y, s.sel.m - 1, s.sel.d + delta);
     const ny = dt.getFullYear(), nm = dt.getMonth() + 1, nd = dt.getDate();
-    return { ...s, sel: { y: ny, m: nm, d: nd }, year: ny, month: nm };
+    // §10.4 keeps the current 时辰 across ±1 day, so never re-peak here.
+    return { ...s, sel: { y: ny, m: nm, d: nd }, year: ny, month: nm, autoPeak: false };
   });
 
   const share = async () => {
@@ -145,7 +157,7 @@ export default function App() {
         <SearchView
           options={options}
           onOpenSlot={(y, m, d, branchIndex) =>
-            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m }))}
+            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, autoPeak: false }))}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
@@ -158,12 +170,8 @@ export default function App() {
               <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={goToday}>今天</button>
             </div>
 
-            {month && (
-              <MonthGrid month={month} today={today} selected={ui.sel} onSelectDay={selectDay} />
-            )}
-            {loading && !month && (
-              <div className="p-10 text-center" style={{ color: 'var(--text-dim)' }}>计算本月各时辰…</div>
-            )}
+            <MonthGrid year={ui.year} month={ui.month} today={today}
+                       selected={ui.sel} onSelectDay={selectDay} />
 
             <Legend />
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
@@ -179,7 +187,7 @@ export default function App() {
                 date={ui.sel}
                 hours={dayHours}
                 selectedHour={ui.hour}
-                onSelectHour={(i) => setUi((s) => ({ ...s, hour: i }))}
+                onSelectHour={(i) => setUi((s) => ({ ...s, hour: i, autoPeak: false }))}
                 onPrevDay={() => shiftDay(-1)}
                 onNextDay={() => shiftDay(1)}
                 onClose={() => setUi((s) => ({ ...s, sel: null }))}
