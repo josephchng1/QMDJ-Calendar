@@ -24,7 +24,7 @@ import {
 import {
   isLiuYiJiXing, isSanQiRuMu, isSanQiControlled,
   isWuBuYuShi, isHourStemTomb, isTianXianShi,
-  menGongRelation, isMenPo, repetition,
+  menGongRelation, isMenPo, repetition, repetitionLabels,
 } from './data/structural.ts';
 import { evaluateChart, type MatchedFormation } from './evaluator.ts';
 
@@ -160,8 +160,10 @@ export function scoreHour(chart: Chart): HourScore {
   if (isHourStemTomb(chart)) { score += PEN.hourStemTomb; warnings.push('时干入墓'); }
   const rep = repetition(b);
   const tianxian = isTianXianShi(chart);
-  if (rep.anyFuYin && !tianxian) { score += PEN.fuYin; warnings.push('伏吟'); }
-  if (rep.anyFanYin) { score += PEN.fanYin; warnings.push('反吟'); }
+  if (rep.anyFuYin && !tianxian) score += PEN.fuYin;
+  if (rep.anyFanYin) score += PEN.fanYin;
+  // Penalties stay plate-agnostic; only the LABELS name the plate (星 / 门 / both).
+  warnings.push(...repetitionLabels(rep, tianxian));
 
   // ── acting-palace notes ──
   const shi = palaceByNumber(chart, shiN);
