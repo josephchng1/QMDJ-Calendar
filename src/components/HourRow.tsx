@@ -54,6 +54,10 @@ export function HourRow({
         <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>
           ▸{role}
         </span>
+        {summary.chartFavours.map((f) => (
+          <span key={f} className="text-[10px] px-1.5 py-0.5 rounded"
+                style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>{f}</span>
+        ))}
         {summary.chartWarnings.filter((w) => w !== '五不遇时').map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>

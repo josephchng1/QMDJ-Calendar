@@ -24,7 +24,7 @@ import {
 import {
   isLiuYiJiXing, isSanQiRuMu, isSanQiControlled,
   isWuBuYuShi, isHourStemTomb, isTianXianShi,
-  menGongRelation, isMenPo, repetition,
+  menGongRelation, isMenPo, repetition, repetitionLabels,
 } from './data/structural.ts';
 import { evaluateChart, type MatchedFormation } from './evaluator.ts';
 
@@ -61,21 +61,33 @@ const SANZHA = ['san-zha-zhen', 'san-zha-zhong', 'san-zha-xiu'];
 export function reconcile(list: MatchedFormation[]): MatchedFormation[] {
   const has = (id: string) => list.some((f) => f.id === id);
   let out = list;
-  if (has('qiyi-xianghe')) out = out.filter((f) => f.id !== 'riqi-beixing');   // 吉门 → 和解, not 被刑
+  // 吉门 present → read the 合 (和解). That supersedes BOTH readings of the same 乙庚
+  // pair: 乙加庚 日奇被刑, and 庚加乙 合格 — which 奇仪相合 already matches via
+  // stemPairIsHe, so leaving it in counted one stem pair twice (+25 +25).
+  if (has('qiyi-xianghe')) out = out.filter((f) => f.id !== 'riqi-beixing' && f.id !== 'hege-geng-yi');
   if (has('sanqi-deshi')) out = out.filter((f) => !RESCUE_QIYI.includes(f.id)); // 得使 rescues 奇⇢仪 凶
   if (out.some((f) => SANZHA.includes(f.id))) out = out.filter((f) => f.id !== 'sanqi-zhiling'); // count once
   return out;
 }
 
+const SUPREME_PAIRS = new Set(['qinglong-fanshou', 'feiniao-diexue']);
+
+/**
+ * 青龙返首 / 飞鸟跌穴 are voided — 吉事变凶 — when the palace carries 迫 / 墓 / 击,
+ * and 青龙返首 also in 震3 (子卯相刑). Exported so palace.ts's ORDERING score applies
+ * the identical gate: the cell tint and corner number come from that score, so a
+ * divergence here paints a compromised 上格 gold in the 九宫 grid.
+ */
+export function supremeCompromised(id: string, p: Palace): boolean {
+  if (!SUPREME_PAIRS.has(id)) return false;
+  return (p.gate ? isMenPo(p.gate, p.palace) : false)
+    || isLiuYiJiXing(p) || isSanQiRuMu(p)
+    || (id === 'qinglong-fanshou' && p.palace === 3);
+}
+
 /** Value contributed by one matched formation in a palace (handles conditional + supreme gating). */
 function formationScore(f: MatchedFormation, p: Palace): number {
-  if (f.id === 'qinglong-fanshou' || f.id === 'feiniao-diexue') {
-    const compromised =
-      (p.gate ? isMenPo(p.gate, p.palace) : false) ||
-      isLiuYiJiXing(p) || isSanQiRuMu(p) ||
-      (f.id === 'qinglong-fanshou' && p.palace === 3); // 子卯相刑
-    return compromised ? SUPREME_COMPROMISED : TIER_WEIGHTS[f.tier];
-  }
+  if (supremeCompromised(f.id, p)) return SUPREME_COMPROMISED;
   if (f.tier === 'conditional') {
     const goodGate = p.gate != null && GOOD_GATES.includes(p.gate as Door);
     return goodGate ? CONDITIONAL_GOOD : CONDITIONAL_BAD;
@@ -160,8 +172,10 @@ export function scoreHour(chart: Chart): HourScore {
   if (isHourStemTomb(chart)) { score += PEN.hourStemTomb; warnings.push('时干入墓'); }
   const rep = repetition(b);
   const tianxian = isTianXianShi(chart);
-  if (rep.anyFuYin && !tianxian) { score += PEN.fuYin; warnings.push('伏吟'); }
-  if (rep.anyFanYin) { score += PEN.fanYin; warnings.push('反吟'); }
+  if (rep.anyFuYin && !tianxian) score += PEN.fuYin;
+  if (rep.anyFanYin) score += PEN.fanYin;
+  // Penalties stay plate-agnostic; only the LABELS name the plate (星 / 门 / both).
+  warnings.push(...repetitionLabels(rep, tianxian));
 
   // ── acting-palace notes ──
   const shi = palaceByNumber(chart, shiN);

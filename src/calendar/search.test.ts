@@ -37,7 +37,8 @@ describe('searchRange — filter', () => {
       filters: { avoid: ['反吟'], minScore: 0, allowWuBuYu: false },
     }));
     expect(r.slots.every((s) => !s.blocked)).toBe(true);
-    expect(r.slots.every((s) => !s.warnings.includes('反吟'))).toBe(true);
+    // labels are plate-qualified — avoid:['反吟'] must catch 星反吟 / 门反吟 too
+    expect(r.slots.every((s) => !s.warnings.some((w) => w.endsWith('反吟')))).toBe(true);
     expect(r.slots.every((s) => !s.warnings.includes('五不遇时'))).toBe(true);
     expect(r.slots.every((s) => s.score >= 0)).toBe(true);
   });

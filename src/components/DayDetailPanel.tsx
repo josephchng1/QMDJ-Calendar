@@ -108,6 +108,7 @@ export function DayDetailPanel({
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <Chip text={`宜为${roleText}`} color="var(--gold)" />
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
+            {summary.chartFavours.map((f) => <Chip key={f} text={f} color="var(--gold)" />)}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
           </div>
 

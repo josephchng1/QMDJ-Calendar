@@ -76,8 +76,10 @@ describe('scoreHour — chart penalties', () => {
     const withGateFuYin = { 1: { gate: '休门' } }; // 休门 home = 坎1 → 门伏吟
     const suppressed = scoreHour(makeChart({ dayStem: '甲', hourStem: '甲', zhiShi: 2, zhiFu: 1, over: withGateFuYin }));
     const notSuppressed = scoreHour(makeChart({ dayStem: '乙', hourStem: '乙', zhiShi: 2, zhiFu: 1, over: withGateFuYin }));
-    expect(suppressed.warnings).not.toContain('伏吟');
-    expect(notSuppressed.warnings).toContain('伏吟');
+    expect(suppressed.warnings.some((w) => w.endsWith('伏吟'))).toBe(false);
+    // only the GATE plate repeats here, so the label names it — a bare '伏吟' would
+    // claim the whole board is 伏吟局.
+    expect(notSuppressed.warnings).toContain('门伏吟');
   });
 });
 

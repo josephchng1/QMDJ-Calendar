@@ -11,7 +11,8 @@ import {
   isLiuYiJiXing, sanQiRuMu, isSanQiRuMu,
   isHourStemTomb, sanQiControlled,
   menGongRelation, isMenPo, isGongPo,
-  repetition, isTianXianShi,
+  repetition, repetitionLabels, isTianXianShi,
+  hasFuYin, hasFanYin, type Repetition,
 } from './structural.ts';
 
 function palace(over: Partial<Palace> & { palace: number }): Palace {
@@ -161,5 +162,40 @@ describe('天显时', () => {
   it('true only for a 甲-hour', () => {
     expect(isTianXianShi(chartWith('甲', []))).toBe(true);
     expect(isTianXianShi(chartWith('乙', []))).toBe(false);
+  });
+});
+
+describe('伏吟 / 反吟 labels', () => {
+  const rep = (o: Partial<Repetition>): Repetition => ({
+    starFuYin: false, gateFuYin: false, starFanYin: false, gateFanYin: false,
+    anyFuYin: false, anyFanYin: false, ...o,
+  });
+
+  it('both plates repeating = the whole-board 伏吟局', () => {
+    expect(repetitionLabels(rep({ starFuYin: true, gateFuYin: true }), false)).toEqual(['伏吟']);
+  });
+  it('both plates reversed = the whole-board 反吟局', () => {
+    expect(repetitionLabels(rep({ starFanYin: true, gateFanYin: true }), false)).toEqual(['反吟']);
+  });
+  it('one plate only = qualified by plate', () => {
+    expect(repetitionLabels(rep({ starFuYin: true }), false)).toEqual(['星伏吟']);
+    expect(repetitionLabels(rep({ gateFuYin: true }), false)).toEqual(['门伏吟']);
+    expect(repetitionLabels(rep({ gateFanYin: true }), false)).toEqual(['门反吟']);
+  });
+  it('星伏吟 + 门反吟 never renders as a bare 伏吟/反吟 pair (阳遁三局 甲子旬 戊辰时)', () => {
+    expect(repetitionLabels(rep({ starFuYin: true, gateFanYin: true }), false))
+      .toEqual(['星伏吟', '门反吟']);
+  });
+  it('天显时 suppresses the 伏吟 side only — 反吟 is never excused', () => {
+    expect(repetitionLabels(rep({ starFuYin: true, gateFuYin: true }), true)).toEqual([]);
+    expect(repetitionLabels(rep({ starFuYin: true, gateFanYin: true }), true)).toEqual(['门反吟']);
+  });
+  it('a quiet board labels nothing', () => {
+    expect(repetitionLabels(rep({}), false)).toEqual([]);
+  });
+  it('suffix helpers match the qualified labels', () => {
+    expect(hasFuYin(['星伏吟'])).toBe(true);
+    expect(hasFanYin(['门反吟'])).toBe(true);
+    expect(hasFuYin(['门反吟', '时干入墓'])).toBe(false);
   });
 });

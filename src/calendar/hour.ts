@@ -12,7 +12,7 @@
 import { buildChart } from '../engine/index.ts';
 import { STEMS } from '../engine/ganzhi.ts';
 import {
-  isWuBuYuShi, repetition, isTianXianShi, isHourStemTomb,
+  isWuBuYuShi, repetition, repetitionLabels, isTianXianShi, isHourStemTomb,
 } from './data/structural.ts';
 import { evaluatePalaces, type PalaceScore, type ScoreProfile, type Band } from './palace.ts';
 import { emergencyDirections, type Direction } from './direction.ts';
@@ -28,6 +28,7 @@ export interface HourSummary {
   palaces: PalaceScore[];        // length 9, index-ordered
   counts: { prime: number; good: number };
   chartWarnings: string[];
+  chartFavours: string[];        // chart-scope POSITIVES (天显时) — gold, not red
   chartBlocked: boolean;         // 五不遇时 → every palace blocked; excluded from search
   hourRoleFavour: 'mover' | 'host';
   emergencyDirections: number[];
@@ -41,10 +42,15 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
   const chartBlocked = isWuBuYuShi(dayStem, hourStem);
 
   const chartWarnings: string[] = [];
+  const chartFavours: string[] = [];
   if (chartBlocked) chartWarnings.push('五不遇时');
-  const rep = repetition(chart.board);
-  if (rep.anyFuYin && !isTianXianShi(chart)) chartWarnings.push('伏吟');
-  if (rep.anyFanYin) chartWarnings.push('反吟');
+  const tianXian = isTianXianShi(chart);
+  // 星 and 门 repeat/reverse independently — the label must name the plate.
+  chartWarnings.push(...repetitionLabels(repetition(chart.board), tianXian));
+  // Every 甲-hour is a full 伏吟局 by construction (值符 back to its origin palace,
+  // 值使 offset 0). 天显时 flips it auspicious — so say so, rather than render the
+  // hour identical to a chart with no repetition at all.
+  if (tianXian) chartFavours.push('天显时');
   if (isHourStemTomb(chart)) chartWarnings.push('时干入墓');
 
   // 中5 excluded from direction counts (§9-R2). Blocked cells never count.
@@ -59,6 +65,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     palaces,
     counts: { prime, good },
     chartWarnings,
+    chartFavours,
     chartBlocked,
     hourRoleFavour: hourRoleFavour(hourStem),
     emergencyDirections: emergencyDirections(chart),

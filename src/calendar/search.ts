@@ -13,8 +13,15 @@
 import { buildChart } from '../engine/index.ts';
 import { scoreHour, bandOf, type Band } from './scoring.ts';
 import { HOUR_SAMPLE, type CalendarOptions } from './summary.ts';
+import { hasFuYin, hasFanYin } from './data/structural.ts';
 import { ACTIVITY_PRESETS, type ActivityPreset } from './data/presets.ts';
 import type { ApplicationTag, Door, Spirit, Tier } from './data/patterns.ts';
+
+/** Warning labels are plate-qualified (伏吟 / 星伏吟 / 门伏吟), so a filter asking for
+ *  '伏吟' has to match by suffix — an exact `includes` silently stops matching the
+ *  moment the label names its plate. */
+const warnMatches = (warnings: string[], want: string): boolean =>
+  warnings.some((w) => w.endsWith(want));
 
 export type SearchMode = 'recommended' | 'by-formation' | 'filter';
 
@@ -70,8 +77,12 @@ function actingBonus(zhiShiGate: string | null, zhiShiSpirit: string | null, pre
 }
 function roleBonus(warnings: string[], role: SearchQuery['role'], preset: ActivityPreset): number {
   if (!preset.roleAware || !role) return 0;
-  if (role === 'host' && warnings.includes('伏吟')) return ROLE_BONUS;   // 伏吟利主
-  if (role === 'mover' && warnings.includes('反吟')) return ROLE_BONUS;  // 反吟利客
+  // Labels are plate-qualified, so suffix-match. A chart carrying BOTH (星伏吟 +
+  // 门反吟) gives no clean 主/客 read — 利主 and 利客 cancel; award nothing.
+  const fu = hasFuYin(warnings), fan = hasFanYin(warnings);
+  if (fu === fan) return 0;
+  if (role === 'host' && fu) return ROLE_BONUS;    // 伏吟利主
+  if (role === 'mover' && fan) return ROLE_BONUS;  // 反吟利客
   return 0;
 }
 
@@ -103,7 +114,7 @@ export function searchRange(q: SearchQuery): SearchResult {
         score += actingBonus(shi?.gate ?? null, shi?.spirit ?? null, preset);
         score += roleBonus(base.warnings, q.role, preset);
         if (preset.excludeFormations.some((id) => matchedIds.has(id))) excluded = true;
-        if (preset.excludeWarnings.some((w) => base.warnings.includes(w))) excluded = true;
+        if (preset.excludeWarnings.some((w) => warnMatches(base.warnings, w))) excluded = true;
       }
 
       const k = dayKey(y, m, d);
@@ -161,7 +172,7 @@ function passesMode(
       if (base.blocked) return false;
       const f = q.filters ?? {};
       if (f.require && !f.require.every((id) => matchedIds.has(id))) return false;
-      if (f.avoid && f.avoid.some((x) => matchedIds.has(x) || base.warnings.includes(x))) return false;
+      if (f.avoid && f.avoid.some((x) => matchedIds.has(x) || warnMatches(base.warnings, x))) return false;
       if (f.minScore != null && score < f.minScore) return false;
       if (!f.allowWuBuYu && (hasWarn('五不遇时') || hasWarn('时干入墓'))) return false;
       return true;

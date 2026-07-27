@@ -1,0 +1,163 @@
+{
+  "id": "2026-02-20-1439-yang9",
+  "description": "乙丑 癸未 阳遁9局 — 2026-02-20 14:39 (IMG_9027). Transcribed from the reference-app screenshot; 中五宫 was not transcribed, so only the 8 outer palaces are asserted.",
+  "sources": [
+    {
+      "name": "时家奇门(转盘) reference app screenshot",
+      "retrievedDate": "2026-02-20",
+      "notes": "Screenshot IMG_9027.PNG, method label \"[9置闰]\". retrievedDate is the screenshot file date."
+    }
+  ],
+  "verified": {
+    "by": "Joe (domain expert) — transcribed in qimen-engine/tests/references*.ts",
+    "date": "2025-07-19",
+    "crossChecked": false
+  },
+  "input": {
+    "instant": "2026-02-20T14:39:00+08:00",
+    "options": {
+      "method": "zhirun",
+      "boardType": "zhuanpan",
+      "lateZiShi": "nextDay",
+      "centrePalace": "kun"
+    }
+  },
+  "expected": {
+    "pillars": {
+      "year": "丙午",
+      "month": "庚寅",
+      "day": "乙丑",
+      "hour": "癸未"
+    },
+    "dun": "yang",
+    "ju": 9,
+    "xunShou": "甲戌",
+    "xunShouYi": "己",
+    "zhiFu": {
+      "star": "天蓬",
+      "palace": 5
+    },
+    "zhiShi": {
+      "gate": "休门",
+      "palace": 1
+    },
+    "kongWang": {
+      "hourVoid": [
+        "申",
+        "酉"
+      ],
+      "dayVoid": [
+        "戌",
+        "亥"
+      ]
+    },
+    "palaces": {
+      "4": {
+        "diPanStems": [
+          "壬"
+        ],
+        "tianPanStems": [
+          "丙"
+        ],
+        "stars": [
+          "天柱"
+        ],
+        "gate": "杜门",
+        "spirit": "九地"
+      },
+      "9": {
+        "diPanStems": [
+          "戊"
+        ],
+        "tianPanStems": [
+          "丁"
+        ],
+        "stars": [
+          "天心"
+        ],
+        "gate": "景门",
+        "spirit": "九天"
+      },
+      "2": {
+        "diPanStems": [
+          "庚"
+        ],
+        "tianPanStems": [
+          "己"
+        ],
+        "stars": [
+          "天蓬"
+        ],
+        "gate": "死门",
+        "spirit": "值符"
+      },
+      "3": {
+        "diPanStems": [
+          "辛"
+        ],
+        "tianPanStems": [
+          "庚",
+          "癸"
+        ],
+        "stars": [
+          "天芮",
+          "天禽"
+        ],
+        "gate": "伤门",
+        "spirit": "玄武"
+      },
+      "7": {
+        "diPanStems": [
+          "丙"
+        ],
+        "tianPanStems": [
+          "乙"
+        ],
+        "stars": [
+          "天任"
+        ],
+        "gate": "惊门",
+        "spirit": "腾蛇"
+      },
+      "8": {
+        "diPanStems": [
+          "乙"
+        ],
+        "tianPanStems": [
+          "戊"
+        ],
+        "stars": [
+          "天英"
+        ],
+        "gate": "生门",
+        "spirit": "白虎"
+      },
+      "1": {
+        "diPanStems": [
+          "己"
+        ],
+        "tianPanStems": [
+          "壬"
+        ],
+        "stars": [
+          "天辅"
+        ],
+        "gate": "休门",
+        "spirit": "六合"
+      },
+      "6": {
+        "diPanStems": [
+          "丁"
+        ],
+        "tianPanStems": [
+          "辛"
+        ],
+        "stars": [
+          "天冲"
+        ],
+        "gate": "开门",
+        "spirit": "太阴"
+      }
+    }
+  }
+}

@@ -67,6 +67,31 @@ chain. Since the repo lives on GitHub:
   StackBlitz without pushing back to GitHub — anything that only lives in
   a StackBlitz workspace is outside the guardrails.
 
+## 4b. Provenance: how the two-reference criterion gets met
+
+The 31 ported fixtures each rest on **one** source (screenshots of a single
+reference 时家奇门 app), so `crossChecked` is `false` across the board and the
+validator says so once per run. §4.4 asks for two independent references. The
+plan is to stratify rather than re-shoot all 31, because the fields need
+different kinds of authority:
+
+| Axis | Independent authority | Cost |
+|---|---|---|
+| Solar-term moments | astronomical almanac (HKO, 紫金山天文台) | cheap, scriptable, all 31 |
+| Four pillars | a plain 万年历 (e.g. wannianrili.bmcx.com) | cheap, independent of any 奇门 software |
+| 局数 | classical 三元 tables; structure already asserted 1900–2100 | already covered structurally |
+| Board layout (天盘/地盘/门/星/神) | a second 奇门 app | expensive — but deterministic given 遁/局/时干支, so a spanning sample suffices |
+
+So: corroborate the cheap axes broadly, the expensive axis on ~6 charts spanning
+both 遁, an intercalated (闰) window, and 晚子时. That needs `verified.crossChecked`
+(one boolean for a fixture whose fields have very different backing) to become
+per-source coverage — e.g. `covers: ["pillars", "terms"]`. **Not yet done; needs
+Joe to nominate the second sources.**
+
+`packages/engine/tests/solar-terms.test.ts` asserts the engine reproduces the
+reference app's displayed term times to ±2 min. That is a second *axis* against
+the same source, not a second source — it does not close this gap.
+
 ## 5. Known gaps (deliberate)
 
 - **Deploy target undefined.** `main.yml`'s deploy job is a stub; the

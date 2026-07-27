@@ -160,6 +160,39 @@ export function repetition(board: Board): Repetition {
   };
 }
 
+/**
+ * Display labels for 伏吟 / 反吟 — PLATE-QUALIFIED.
+ *
+ * 天盘 (九星) and 八门 rotate on independent anchors: the stars follow 值符 to the
+ * 时干宫, the gates follow 值使 by the hour's offset within the 旬. They routinely
+ * disagree, so a pair of bare chips reading "伏吟 反吟" is not a contradiction —
+ * it is 星伏吟 + 门反吟, and the reader has to be told which plate is which.
+ * Reachable: 阳遁三局 · 甲子旬 · 戊辰时 — 地盘戊 sits in 震3, so 值符 天冲 returns
+ * home (星伏吟) while 值使 伤门 advances 4 palaces to 兑7 = 沖(震3) (门反吟).
+ *
+ * When both plates agree the label stays the plain 伏吟 / 反吟 — the whole board
+ * repeats or reverses, i.e. the classical 伏吟局 / 反吟局.
+ *
+ * 天显时 (§6, hour stem 甲) suppresses the 伏吟 side only; 反吟 is never excused.
+ */
+export function repetitionLabels(rep: Repetition, tianXianShi: boolean): string[] {
+  const out: string[] = [];
+  if (!tianXianShi) {
+    if (rep.starFuYin && rep.gateFuYin) out.push('伏吟');
+    else if (rep.starFuYin) out.push('星伏吟');
+    else if (rep.gateFuYin) out.push('门伏吟');
+  }
+  if (rep.starFanYin && rep.gateFanYin) out.push('反吟');
+  else if (rep.starFanYin) out.push('星反吟');
+  else if (rep.gateFanYin) out.push('门反吟');
+  return out;
+}
+
+/** Does a warning list carry any flavour of 伏吟 / 反吟? Labels are plate-qualified
+ *  (伏吟 / 星伏吟 / 门伏吟), so consumers must suffix-match — never `includes('伏吟')`. */
+export const hasFuYin = (warnings: string[]): boolean => warnings.some((w) => w.endsWith('伏吟'));
+export const hasFanYin = (warnings: string[]): boolean => warnings.some((w) => w.endsWith('反吟'));
+
 // ─── §6 天显时 — hour pillar stem 甲: 伏吟 exception, flips auspicious ───
 export function isTianXianShi(chart: Chart): boolean {
   return STEMS[chart.pillars.hour.stem] === '甲';
