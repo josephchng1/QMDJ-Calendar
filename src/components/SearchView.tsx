@@ -4,6 +4,7 @@ import type { SearchQuery, SearchMode, SlotResult } from '../calendar/search.ts'
 import { useSearch } from '../hooks/useSearch.ts';
 import { ACTIVITY_ORDER, ACTIVITY_PRESETS } from '../calendar/data/presets.ts';
 import { ALL_PATTERNS } from '../calendar/data/patterns.ts';
+import { topFormations, formationColor } from '../calendar/importance.ts';
 import { bandColor, BAND_LABEL, scorePercent, shichenWindow } from '../calendar/bands.ts';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -172,10 +173,15 @@ function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onCl
       <span className="text-sm gold">{slot.hourGanzhi}</span>
       <span className="text-xs font-medium" style={{ color: c }}>{BAND_LABEL[slot.band]} {scorePercent(slot.score)}</span>
       <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
-        {slot.formations.slice(0, 3).map((f) => (
-          <span key={f.id} className="text-[10px] px-1.5 py-0.5 rounded"
-                style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>{f.name}</span>
-        ))}
+        {/* the two loudest, coloured by direction — slice(0,3) took whichever
+            formations sat in the lowest-numbered palace, and painted 凶格 gold */}
+        {topFormations(slot.formations, 2).map((f) => {
+          const fc = formationColor(f.tier);
+          return (
+            <span key={f.id} className="text-[10px] px-1.5 py-0.5 rounded"
+                  style={{ color: fc, border: `1px solid ${fc}66` }}>{f.name}</span>
+          );
+        })}
         {slot.warnings.slice(0, 2).map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>

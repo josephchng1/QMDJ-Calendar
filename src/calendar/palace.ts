@@ -23,7 +23,7 @@ import {
   isWuBuYuShi, palaceOfTianStem, menGongRelation, type MenGong,
 } from './data/structural.ts';
 import { evaluateChart, type MatchedFormation } from './evaluator.ts';
-import { reconcile } from './scoring.ts';
+import { reconcile, supremeCompromised } from './scoring.ts';
 import { ACTIVITY_PRESETS } from './data/presets.ts';
 import { purposeProfile, YONGSHEN } from './profiles.ts';
 import {
@@ -70,6 +70,7 @@ const VALENCE: Record<Quality, number> = {
 const WONDER_VALENCE = 6;   // 三奇 intrinsic positive (no quality table for stems)
 const K_SHENG = 0.2, K_ZHI = 0.25, K_PO = 0.3;
 const VOID_PENALTY = 12, CONTROLLED_PENALTY = 20, BLOCKED_SCORE = -999;
+const SUPREME_COMPROMISED = -30;   // 上格 in a 迫/墓/击/刑 palace — mirrors scoring.ts
 const WONDERS = ['乙', '丙', '丁'] as const;
 
 const TOP_TIER = new Set([
@@ -204,9 +205,14 @@ function applyMenGong(v: number, rel: MenGong): number {
     default: return v;
   }
 }
-function formationContribution(f: MatchedFormation, gate: string | null): number {
+function formationContribution(f: MatchedFormation, p: Palace): number {
+  // Same gate as the chart score (scoring.ts): a 上格 sitting in 迫/墓/击/刑 is
+  // 吉事变凶. Without this the ordering score handed it the full +100 — and since
+  // the cell tint and corner number are derived from THIS score (bandsV2.scoreBand,
+  // SCORE_PRIME = 120), a compromised 青龙返首 rendered as a gold 大吉 palace.
+  if (supremeCompromised(f.id, p)) return SUPREME_COMPROMISED;
   if (f.tier === 'conditional') {
-    return gate != null && GOOD_GATES.includes(gate as Door) ? 25 : -30;
+    return p.gate != null && GOOD_GATES.includes(p.gate as Door) ? 25 : -30;
   }
   return TIER_WEIGHTS[f.tier];
 }
@@ -233,7 +239,7 @@ function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number
   if (p.spirit && SPIRITS[p.spirit as keyof typeof SPIRITS]) {
     s += VALENCE[SPIRITS[p.spirit as keyof typeof SPIRITS].quality] * wSpirit;
   }
-  for (const f of ev.matched) s += formationContribution(f, p.gate); // NOT amplitude-scaled
+  for (const f of ev.matched) s += formationContribution(f, p); // NOT amplitude-scaled
   if (ev.kongWang) s -= VOID_PENALTY;
   if (isSanQiControlled(p)) s -= CONTROLLED_PENALTY;
 
