@@ -59,16 +59,8 @@ export interface WhenClause {
   sanqiInPalace?: Partial<Record<Wonder, PalaceIndex>>; // a 奇 seated in its throne/salary palace
   stemPairIsHe?: boolean;                            // 天/地 stems form a 合 pair
   hourStemIs?: Stem | '甲';                          // chart-scope: hour pillar stem
-  // §4.9 庚-格 family — the 地/天盘 stem must EQUAL a chart-context stem
-  // (a pillar stem, or the 旬首本仪 that the 值符 carries). Resolved by the
-  // evaluator from the chart, not from the palace alone.
-  diPanStemIsRef?: StemRef;
-  tianPanStemIsRef?: StemRef;
   any?: WhenClause[];
 }
-
-/** Chart-context stems a 庚-格 rule can point at (§4.9 GENG_OBSTRUCTION_RULES). */
-export type StemRef = 'yearStem' | 'monthStem' | 'dayStem' | 'hourStem' | 'xunShouYi';
 
 export interface PatternRule {
   id: string;
@@ -496,110 +488,14 @@ export const PATTERNS_SANQI: PatternRule[] = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// §4.9 chart-context 庚 格 — 太白 measured against the pillars / 旬首, not against
-// a fixed partner stem. S0(p136) lists these in the direction avoid-list, so they
-// are 下格 alongside 大格/刑格. Matched per palace, but the comparison stem comes
-// from the chart (see StemRef / evaluator ctx).
-// ─────────────────────────────────────────────────────────────────────────────
-export const PATTERNS_GENG_CONTEXT: PatternRule[] = [
-  {
-    id: 'sui-ge', name: '岁格', nameEn: 'Year Obstruction',
-    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
-    when: { tianPanStem: '庚', diPanStemIsRef: 'yearStem' },
-    interpretation: '天盘庚 加 地盘年干 — 太白剋年，一年之事受阻；举事不成，远行不利。',
-    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
-    notes: 'MITIGATOR: 值符 in the same palace damps it — S0(p108).',
-    source: 'S0(p136)',
-  },
-  {
-    id: 'fugong-ge', name: '伏宫格', nameEn: 'Buried Palace Obstruction',
-    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
-    when: { tianPanStem: '庚', diPanStemIsRef: 'xunShouYi' },
-    interpretation: '天盘庚 加 地盘值符本仪(旬首) — 太白压符，主事者受制，谋事伏而不起。',
-    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
-    source: 'S0(p136)',
-  },
-  {
-    id: 'feigan-ge', name: '飞干格', nameEn: 'Flying Stem Obstruction',
-    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
-    when: { tianPanStemIsRef: 'dayStem', diPanStem: '庚' },
-    interpretation: '天盘日干 加 地盘庚 — 日干飞临太白，自投其阻；求谋反受其害。',
-    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
-    source: 'S0(p136)',
-  },
-  {
-    id: 'feigong-ge', name: '飞宫格', nameEn: 'Flying Palace Obstruction',
-    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
-    when: { tianPanStemIsRef: 'xunShouYi', diPanStem: '庚' },
-    interpretation: '天盘值符本仪(旬首) 加 地盘庚 — 值符飞入太白，主事者自陷阻格。',
-    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
-    source: 'S0(p136)',
-  },
-];
-
 // The full firm registry, in one array for the evaluator to sweep.
 export const ALL_PATTERNS: PatternRule[] = [
   ...PATTERNS_AUSPICIOUS,
   ...PATTERNS_INAUSPICIOUS,
   ...PATTERNS_CONCEALMENT,
   ...PATTERNS_SANQI,
-  ...PATTERNS_GENG_CONTEXT,
 ];
 
 export const PATTERNS_BY_ID: Record<string, PatternRule> = Object.fromEntries(
   ALL_PATTERNS.map((p) => [p.id, p]),
 );
-
-// ─────────────────────────────────────────────────────────────────────────────
-// §2b 格局等级 — which formations earn a LABEL in the UI (Joe, 2026-07-28).
-//
-// Only the extremes are labelled: 上格 (green) and 下格 (red). Everything in
-// between is deliberately unlabelled, so a chip always means "this is decisive".
-// This is a DISPLAY grade — it does not feed the band ladder or the score.
-// ─────────────────────────────────────────────────────────────────────────────
-export type Grade = '上格' | '下格';
-
-/** 上格 — the top formations. */
-export const SHANG_GE_IDS: ReadonlySet<string> = new Set([
-  'qinglong-fanshou',   // 青龙返首
-  'feiniao-diexue',     // 飞鸟跌穴
-  'tian-dun',           // 天遁
-  'di-dun',             // 地遁
-  'ren-dun',            // 人遁
-  'sanqi-deshi',        // 三奇得使
-  'sanqi-shengdian',    // 三奇贵人升殿
-  'yunü-shoumen',       // 玉女守门
-  'tianxian-shige',     // 天显时格 (chart scope)
-  'san-zha-zhen',       // 真诈
-  'san-zha-zhong',      // 重诈
-  'san-zha-xiu',        // 休诈
-  'qinglong-yaoming',   // 青龙耀明
-  'huanyi',             // 欢怡
-  'qiyou-luwei',        // 奇游禄位
-  'qiyi-xiangzuo',      // 奇仪相佐
-]);
-
-/** 下格 — the worst formations. */
-export const XIA_GE_IDS: ReadonlySet<string> = new Set([
-  'qinglong-taozou',    // 青龙逃走
-  'baihu-changkuang',   // 白虎猖狂
-  'zhuque-toujiang',    // 朱雀投江
-  'tengshe-yaojiao',    // 腾蛇夭矫
-  'tianwang-sizhang',   // 天网四张
-  'geng-da-ge',         // 大格
-  'geng-xing-ge',       // 刑格
-  'taibai-ruying',      // 太白入荧
-  'huoru-jinxiang',     // 荧入太白
-  'sui-ge',             // 岁格
-  'fugong-ge',          // 伏宫格
-  'feigan-ge',          // 飞干格
-  'feigong-ge',         // 飞宫格
-]);
-
-/** Display grade of a formation id — null for everything mid-range. */
-export function gradeOf(id: string): Grade | null {
-  if (SHANG_GE_IDS.has(id)) return '上格';
-  if (XIA_GE_IDS.has(id)) return '下格';
-  return null;
-}
