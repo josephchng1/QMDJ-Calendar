@@ -4,8 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { STEMS } from '../../engine/ganzhi.ts';
 import type { Palace, Board } from '../../engine/board.ts';
-import { buildChart, type Chart } from '../../engine/index.ts';
-import { HOUR_SAMPLE } from '../summary.ts';
+import type { Chart } from '../../engine/index.ts';
 import {
   controls, generates, chong,
   isWuBuYuShi, WU_BU_YU_TABLE,
@@ -137,30 +136,24 @@ describe('门迫 / 宫迫 / 和义', () => {
   });
 });
 
-describe('伏吟 / 反吟 (2026-07-29, validated by Joe)', () => {
-  const opts = { method: 'zhirun', spiritVariant: false, lateZiNextDay: true } as const;
-  const rep = (branchIndex: number) =>
-    repetition(buildChart({ y: 2026, m: 7, d: 29, hh: HOUR_SAMPLE[branchIndex], mm: 0, ...opts }).board);
-
-  // 值符 mechanism only — the 值使 gate ring must NOT count (it over-fired 未/酉).
-  it('子时 甲子 = 伏吟 (值符归本位; 甲-hour/天显时 still reported)', () => {
-    expect(rep(0).fuYin).toBe(true);
-    expect(rep(0).fanYin).toBe(false);
+describe('伏吟 / 反吟', () => {
+  it('star in its home palace = 星伏吟', () => {
+    const r = repetition(board([palace({ palace: 1, stars: ['天蓬'] })])); // 天蓬 home = 1
+    expect(r.starFuYin).toBe(true);
+    expect(r.anyFuYin).toBe(true);
   });
-  it('寅时 丙寅 = 反吟', () => {
-    expect(rep(2).fanYin).toBe(true);
-    expect(rep(2).fuYin).toBe(false);
+  it('star in the 沖 palace = 星反吟', () => {
+    const r = repetition(board([palace({ palace: 1, stars: ['天英'] })])); // 天英 home = 9 = 沖(1)
+    expect(r.starFanYin).toBe(true);
   });
-  it('辰时 戊辰 = 伏吟', () => {
-    expect(rep(4).fuYin).toBe(true);
+  it('gate in its home palace = 门伏吟', () => {
+    const r = repetition(board([palace({ palace: 1, gate: '休门' })])); // 休门 home = 1
+    expect(r.gateFuYin).toBe(true);
   });
-  it('未时 辛未 = neither (gate-ring alignment must not count)', () => {
-    expect(rep(7).fuYin).toBe(false);
-    expect(rep(7).fanYin).toBe(false);
-  });
-  it('酉时 癸酉 = neither', () => {
-    expect(rep(9).fuYin).toBe(false);
-    expect(rep(9).fanYin).toBe(false);
+  it('quiet board has neither', () => {
+    const r = repetition(board([palace({ palace: 1, stars: ['天芮'], gate: '开门' })]));
+    expect(r.anyFuYin).toBe(false);
+    expect(r.anyFanYin).toBe(false);
   });
 });
 
