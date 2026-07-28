@@ -14,12 +14,14 @@ function palace(over: Partial<Palace> & { palace: number }): Palace {
 // Build a full 9-palace board; `over` maps palace-number → partial overrides.
 function makeChart(opts: {
   dayStem: string; hourStem: string; zhiShi: number; zhiFu: number;
+  zhiFuStar?: string;
   over?: Record<number, Partial<Palace>>;
 }): Chart {
   const palaces: Palace[] = [];
   for (let p = 1; p <= 9; p++) palaces.push(palace({ palace: p, ...(opts.over?.[p] ?? {}) }));
   const board = {
     palaces, zhiShiDisplayPalace: opts.zhiShi, zhiFuDisplayPalace: opts.zhiFu,
+    zhiFuStar: opts.zhiFuStar ?? '',   // '' → no 值符 伏吟/反吟 (default for tests not exercising it)
   } as unknown as Board;
   return {
     pillars: {
@@ -73,9 +75,9 @@ describe('scoreHour — chart penalties', () => {
     expect(r.warnings).toContain('五不遇时');
   });
   it('天显时 (甲-hour) suppresses the 伏吟 penalty', () => {
-    const withGateFuYin = { 1: { gate: '休门' } }; // 休门 home = 坎1 → 门伏吟
-    const suppressed = scoreHour(makeChart({ dayStem: '甲', hourStem: '甲', zhiShi: 2, zhiFu: 1, over: withGateFuYin }));
-    const notSuppressed = scoreHour(makeChart({ dayStem: '乙', hourStem: '乙', zhiShi: 2, zhiFu: 1, over: withGateFuYin }));
+    // 值符 伏吟: 天蓬 (home 坎1) sits back on palace 1 (值符归本位).
+    const suppressed = scoreHour(makeChart({ dayStem: '甲', hourStem: '甲', zhiShi: 2, zhiFu: 1, zhiFuStar: '天蓬' }));
+    const notSuppressed = scoreHour(makeChart({ dayStem: '乙', hourStem: '乙', zhiShi: 2, zhiFu: 1, zhiFuStar: '天蓬' }));
     expect(suppressed.warnings).not.toContain('伏吟');
     expect(notSuppressed.warnings).toContain('伏吟');
   });
