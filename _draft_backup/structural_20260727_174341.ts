@@ -124,30 +124,40 @@ export function menGongRelation(door: string, p: number): MenGong {
 export const isMenPo = (door: string, p: number): boolean => menGongRelation(door, p) === '迫';
 export const isGongPo = (door: string, p: number): boolean => menGongRelation(door, p) === '制';
 
-// ─── §7.6 伏吟 / 反吟 — 值符(天盘) returns to / opposes its home palace ───
-// A star's home palace = its Luoshu number.
+// ─── §7.6 伏吟 / 反吟 — star & gate repetition/reversal ───
+// A star's home palace = its Luoshu number; a gate's home is fixed likewise.
+// 值符伏吟 (甲加甲) is NOT yet detected here — see note below.
 const STAR_HOME: Record<string, number> = {
   天蓬: 1, 天芮: 2, 天冲: 3, 天辅: 4, 天禽: 5, 天心: 6, 天柱: 7, 天任: 8, 天英: 9,
 };
+const GATE_HOME: Record<string, number> = {
+  休门: 1, 死门: 2, 伤门: 3, 杜门: 4, 开门: 6, 惊门: 7, 生门: 8, 景门: 9,
+};
+
 export interface Repetition {
-  fuYin: boolean; fanYin: boolean;
-  anyFuYin: boolean; anyFanYin: boolean;   // kept for existing callers
+  starFuYin: boolean; gateFuYin: boolean;
+  starFanYin: boolean; gateFanYin: boolean;
+  anyFuYin: boolean; anyFanYin: boolean;
 }
-// 伏吟 = the 值符 star returns to its 地盘 home palace (天盘 coincides with 地盘,
-// ring rotation 0). 反吟 = it lands on the 对冲 palace (180° rotation). The star
-// ring is rigid, so the 值符 alone decides it. The 值使 GATE ring is a SEPARATE
-// rotation and must NOT be counted — doing so over-fired 伏吟/反吟 on hours where
-// only the gate ring aligned (validated against 2026-07-29: 未/酉 were false, 子
-// was a missed 伏吟). 甲-hours (天显时) genuinely ARE 伏吟 — 值符归本位 — so they
-// are reported, not suppressed; their auspicious valence is a scoring concern.
 export function repetition(board: Board): Repetition {
-  const originRaw = STAR_HOME[board.zhiFuStar];
-  const home = originRaw === 5 ? 2 : originRaw;        // 禽 rides with 芮 (palace 2)
-  const zf = board.zhiFuDisplayPalace;
-  const opp = home != null ? chong(home) : null;
-  const fuYin = home != null && zf === home;
-  const fanYin = opp != null && zf === opp;
-  return { fuYin, fanYin, anyFuYin: fuYin, anyFanYin: fanYin };
+  let starFuYin = false, gateFuYin = false, starFanYin = false, gateFanYin = false;
+  for (const p of board.palaces) {
+    if (p.palace === 5) continue;
+    const opp = chong(p.palace);
+    for (const s of p.stars) {
+      if (STAR_HOME[s] === p.palace) starFuYin = true;
+      if (opp != null && STAR_HOME[s] === opp) starFanYin = true;
+    }
+    if (p.gate) {
+      if (GATE_HOME[p.gate] === p.palace) gateFuYin = true;
+      if (opp != null && GATE_HOME[p.gate] === opp) gateFanYin = true;
+    }
+  }
+  return {
+    starFuYin, gateFuYin, starFanYin, gateFanYin,
+    anyFuYin: starFuYin || gateFuYin,
+    anyFanYin: starFanYin || gateFanYin,
+  };
 }
 
 // ─── §6 天显时 — hour pillar stem 甲: 伏吟 exception, flips auspicious ───
@@ -155,3 +165,8 @@ export function isTianXianShi(chart: Chart): boolean {
   return STEMS[chart.pillars.hour.stem] === '甲';
 }
 
+// NOTE (Phase 0 residual): 值符伏吟/反吟 (甲加甲 / 甲子戊+甲午辛) is not detected by
+// repetition() — it needs the 值符 origin palace, which the board does not export.
+// Star- and gate-level detection covers the impactful cases; wire 值符-level in
+// Phase 1 if the scorer needs it (would require a small board.ts export). Tracked
+// in qmdj-date-search-plan.md §4 open items.

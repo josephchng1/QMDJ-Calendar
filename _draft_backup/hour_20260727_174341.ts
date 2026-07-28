@@ -12,7 +12,7 @@
 import { buildChart } from '../engine/index.ts';
 import { STEMS } from '../engine/ganzhi.ts';
 import {
-  isWuBuYuShi, repetition, isHourStemTomb,
+  isWuBuYuShi, repetition, isTianXianShi, isHourStemTomb,
 } from './data/structural.ts';
 import { evaluatePalaces, type PalaceScore, type ScoreProfile, type Band } from './palace.ts';
 import { emergencyDirections, type Direction } from './direction.ts';
@@ -43,7 +43,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
   const chartWarnings: string[] = [];
   if (chartBlocked) chartWarnings.push('五不遇时');
   const rep = repetition(chart.board);
-  if (rep.anyFuYin) chartWarnings.push('伏吟');
+  if (rep.anyFuYin && !isTianXianShi(chart)) chartWarnings.push('伏吟');
   if (rep.anyFanYin) chartWarnings.push('反吟');
   if (isHourStemTomb(chart)) chartWarnings.push('时干入墓');
 

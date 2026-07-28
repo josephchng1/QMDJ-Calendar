@@ -6,7 +6,6 @@ import { FourPillarsBar } from './FourPillarsBar.tsx';
 import { PalaceGrid } from './PalaceGrid.tsx';
 import { Chip } from './PalaceReasons.tsx';
 import { scoreCounts } from '../calendar/bandsV2.ts';
-import { shichenWindow } from '../calendar/bands.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
 import { ACTIVITY_ORDER, activityLabel } from '../calendar/data/presets.ts';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
@@ -99,7 +98,7 @@ export function DayDetailPanel({
           <div className="flex items-center gap-2">
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}
                     disabled={selectedHour === 0}>← 前一时辰</button>
-            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span></span>
+            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[selectedHour]}时</span>
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}
                     disabled={selectedHour === 11}>后一时辰 →</button>
           </div>
