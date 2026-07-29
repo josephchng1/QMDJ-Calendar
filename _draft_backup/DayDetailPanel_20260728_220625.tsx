@@ -4,7 +4,7 @@ import { HourRow } from './HourRow.tsx';
 import { SummaryHeader } from './SummaryHeader.tsx';
 import { FourPillarsBar } from './FourPillarsBar.tsx';
 import { PalaceGrid } from './PalaceGrid.tsx';
-import { Chip, GradeChips } from './PalaceReasons.tsx';
+import { Chip } from './PalaceReasons.tsx';
 import { scoreCounts } from '../calendar/bandsV2.ts';
 import { shichenWindow } from '../calendar/bands.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
@@ -107,7 +107,6 @@ export function DayDetailPanel({
 
           {/* 主客 / 急则从神 / chart warnings — direction context for the graded board */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <GradeChips grades={summary.chartGrades} />
             <Chip text={`宜为${roleText}`} color="var(--gold)" />
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}

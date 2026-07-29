@@ -14,7 +14,9 @@ import { STEMS } from '../engine/ganzhi.ts';
 import {
   isWuBuYuShi, repetition, isHourStemTomb,
 } from './data/structural.ts';
-import { evaluatePalaces, type PalaceScore, type ScoreProfile, type Band } from './palace.ts';
+import { evaluatePalaces, type PalaceScore, type ScoreProfile, type Band, type GradedFormation } from './palace.ts';
+import { matchChart } from './evaluator.ts';
+import { PATTERNS_BY_ID, gradeOf } from './data/patterns.ts';
 import { emergencyDirections, type Direction } from './direction.ts';
 import { HOUR_SAMPLE, daysInMonth, type CalendarOptions } from './summary.ts';
 import type { Chart } from '../engine/index.ts';
@@ -28,6 +30,8 @@ export interface HourSummary {
   palaces: PalaceScore[];        // length 9, index-ordered
   counts: { prime: number; good: number };
   chartWarnings: string[];
+  /** chart-scope 上格/下格 labels (天显时格 · 值符伏吟) — palace ones live on PalaceScore */
+  chartGrades: GradedFormation[];
   chartBlocked: boolean;         // 五不遇时 → every palace blocked; excluded from search
   hourRoleFavour: 'mover' | 'host';
   emergencyDirections: number[];
@@ -47,6 +51,19 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
   if (rep.anyFanYin) chartWarnings.push('反吟');
   if (isHourStemTomb(chart)) chartWarnings.push('时干入墓');
 
+  // chart-scope grades (§2b). Checked rule-by-rule rather than via a second
+  // evaluateChart sweep — the month projection calls this for every 时辰.
+  const chartGrades: GradedFormation[] = [];
+  const tianXian = PATTERNS_BY_ID['tianxian-shige'];
+  const isTianXian = !!tianXian && matchChart(tianXian.when, chart);
+  if (isTianXian) {
+    const grade = gradeOf(tianXian!.id);
+    if (grade) chartGrades.push({ text: tianXian!.name, grade });
+  }
+  // 天显时 turns the 伏吟 auspicious (S0 p125/p131) — same suppression scoring.ts
+  // applies to the 伏吟 penalty, so the 下格 label must not contradict it.
+  if (rep.fuYin && !isTianXian) chartGrades.push({ text: '值符伏吟', grade: '下格' });
+
   // 中5 excluded from direction counts (§9-R2). Blocked cells never count.
   let prime = 0, good = 0;
   for (const ps of palaces) {
@@ -59,6 +76,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     palaces,
     counts: { prime, good },
     chartWarnings,
+    chartGrades,
     chartBlocked,
     hourRoleFavour: hourRoleFavour(hourStem),
     emergencyDirections: emergencyDirections(chart),

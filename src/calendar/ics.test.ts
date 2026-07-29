@@ -4,7 +4,7 @@ import { slotEvent, buildIcs, googleCalendarUrl } from './ics.ts';
 
 function ps(palace: number, direction: PalaceScore['direction'], score: number): PalaceScore {
   return { palace, direction, band: 'plain', rung: '凶方', reasons: [], blocked: false,
-    score, matched: [], warnings: [], badges: [], baseFilter: '凶方',
+    score, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
     strength: { gate: null, star: null, spirit: null, stems: {} } };
 }
 

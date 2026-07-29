@@ -15,8 +15,8 @@ import type { Palace } from '../engine/board.ts';
 import type { Chart } from '../engine/index.ts';
 import { STEMS } from '../engine/ganzhi.ts';
 import {
-  GATES, STARS, SPIRITS, GOOD_GATES, TIER_WEIGHTS, gradeOf,
-  type Door, type Star, type Spirit, type Quality, type ApplicationTag, type Grade,
+  GATES, STARS, SPIRITS, GOOD_GATES, TIER_WEIGHTS,
+  type Door, type Star, type Spirit, type Quality, type ApplicationTag,
 } from './data/patterns.ts';
 import {
   isLiuYiJiXing, isSanQiRuMu, isHourStemTomb, isSanQiControlled,
@@ -38,9 +38,6 @@ import {
 export type Band = 'prime' | 'good' | 'plain';   // 大吉 / 吉 / 不吉
 export type Rung = '奇门相会' | '得门不得奇' | '逢吉格' | '得奇不得门' | '凶方';
 
-/** A labelled formation: only the extremes (上格 / 下格) ever get one (§2b). */
-export interface GradedFormation { text: string; grade: Grade }
-
 export type ScoreProfile =
   | { kind: 'general' }
   | { kind: 'purpose'; activity: ApplicationTag; role?: 'mover' | 'host'; highStakes?: boolean };
@@ -56,8 +53,6 @@ export interface PalaceScore {
   matched: MatchedFormation[];
   warnings: string[];
   badges: string[];
-  /** 上格 / 下格 chips — the decisive formations, for the display area (§2b). */
-  grades: GradedFormation[];
   baseFilter: BaseFilterResult;
   strength: {
     gate: GateVitality | null;
@@ -281,34 +276,13 @@ function buildEval(chart: Chart, p: Palace, matched: MatchedFormation[]): Palace
   };
 }
 
-// ─── §2b display grades — 上格 (green) / 下格 (red); nothing in between ──────
-// Two entries are not formations in the registry but are graded 下格 all the same:
-// 六仪击刑 (a step-0b hard exclusion) and 凶门克宫 (凶门 剋 its palace, 门迫 on a
-// 凶门 — the gate's harm lands with full force).
-function gradesFor(p: Palace, ev: PalaceEval, matched: MatchedFormation[]): GradedFormation[] {
-  const top: GradedFormation[] = [];
-  const bottom: GradedFormation[] = [];
-  const seen = new Set<string>();
-  for (const m of matched) {
-    const grade = gradeOf(m.id);
-    if (!grade || seen.has(m.name)) continue;
-    seen.add(m.name);
-    (grade === '上格' ? top : bottom).push({ text: m.name, grade });
-  }
-  if (ev.jiXing && !seen.has('六仪击刑')) bottom.push({ text: '六仪击刑', grade: '下格' });
-  if (ev.menGong === '迫' && p.gate && !GOOD_GATES.includes(p.gate as Door)) {
-    bottom.push({ text: '凶门克宫', grade: '下格' });
-  }
-  return [...top, ...bottom];
-}
-
 export function evaluatePalace(
   chart: Chart, p: Palace, matched: MatchedFormation[], profile: ScoreProfile,
 ): PalaceScore {
   if (p.palace === 5) {
     return {
       palace: 5, direction: null, band: 'plain', rung: '凶方', reasons: [], blocked: false,
-      score: 0, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
+      score: 0, matched: [], warnings: [], badges: [], baseFilter: '凶方',
       strength: { gate: null, star: null, spirit: null, stems: {} },
     };
   }
@@ -337,7 +311,6 @@ export function evaluatePalace(
     palace: p.palace,
     direction: directionOf(p.palace),
     band, rung, reasons, blocked, score, matched, warnings, badges,
-    grades: gradesFor(p, ev, matched),
     baseFilter: baseFilter(p, matched, goodGates),
     strength: ev.strength,
   };

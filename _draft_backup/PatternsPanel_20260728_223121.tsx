@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   PATTERNS_AUSPICIOUS, PATTERNS_INAUSPICIOUS, PATTERNS_CONCEALMENT, PATTERNS_SANQI,
-  PATTERNS_GENG_CONTEXT, gradeOf,
   type PatternRule, type Tier, type ApplicationTag,
 } from '../calendar/data/patterns.ts';
 
@@ -14,7 +13,7 @@ const CATEGORIES: { key: string; label: string; sub: string; rules: PatternRule[
   { key: 'ji', label: '吉格', sub: '天地干吉', rules: PATTERNS_AUSPICIOUS },
   { key: 'dun', label: '九遁', sub: '奇门遁蔽', rules: PATTERNS_CONCEALMENT },
   { key: 'sanqi', label: '三奇格', sub: '三奇结构', rules: PATTERNS_SANQI },
-  { key: 'xiong', label: '凶格', sub: '天地干凶', rules: [...PATTERNS_INAUSPICIOUS, ...PATTERNS_GENG_CONTEXT] },
+  { key: 'xiong', label: '凶格', sub: '天地干凶', rules: PATTERNS_INAUSPICIOUS },
 ];
 
 const TIER_LABEL: Record<Tier, string> = {
@@ -139,8 +138,6 @@ function PatternCard({ rule, selected, onClick }: {
   rule: PatternRule; selected: boolean; onClick: () => void;
 }) {
   const color = TIER_COLOR[rule.tier];
-  const grade = gradeOf(rule.id);
-  const gradeColor = grade === '上格' ? 'var(--q-good)' : 'var(--q-bad)';
   return (
     <button
       onClick={onClick}
@@ -155,14 +152,6 @@ function PatternCard({ rule, selected, onClick }: {
         <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{rule.name}</span>
         <span className="text-[10px] leading-none px-1.5 py-0.5 rounded"
               style={{ color, border: `1px solid ${color}66` }}>{TIER_LABEL[rule.tier]}</span>
-        {grade && (
-          <span className="text-[10px] leading-none px-1.5 py-0.5 rounded font-semibold"
-                style={{
-                  color: gradeColor,
-                  border: `1px solid ${gradeColor}`,
-                  background: `color-mix(in srgb, ${gradeColor} 18%, transparent)`,
-                }}>{grade}</span>
-        )}
         {rule.confidence === 'variant' && (
           <span className="text-[10px]" style={{ color: 'var(--q-caution)' }} title="各家定义有异，建议先确认">⚠</span>
         )}
