@@ -6,14 +6,13 @@ computes **client-side in a Web Worker**, works offline, and never needs a serve
 
 [**▶ Open in StackBlitz**](https://stackblitz.com/github/josephchng1/QMDJ-Calendar) — installs and runs live from this repo, no local setup.
 
-Built on a **vendored, frozen copy** of the Zhirun chart engine
-(`src/engine/`, from [`josephchng1/QMDJ`](https://github.com/josephchng1/QMDJ)).
-The engine is never edited here; algorithm updates are re-synced deliberately.
+The Zhirun chart engine lives in `src/engine/` (consolidated here from
+[`josephchng1/QMDJ`](https://github.com/josephchng1/QMDJ)). Engine
+changes must keep `npm run test:engine` and the golden fixtures passing.
 
 ## What it does today
 
-- **Month calendar** — every day shows a 12-segment bar (one per 时辰) plus a
-  whole-day quality band, so auspicious windows pop at a glance.
+- **Month calendar** — a plain date picker; pick a day to see its 时辰 and 方位.
 - **Day panel** — click a day for its 12 时辰 ratings (with 五不遇时 / 时空 flags)
   and the full **奇门盘** for any hour, with ← → hour paging.
 - **Three methods** — 置闰法 (default) / 拆补法, 八神变体, 晚子时次日 toggles.

@@ -30,9 +30,10 @@ a client opening a link, understanding when to act, and having reason to trust i
 A Qimen chart is a pure deterministic function of `(instant, method, settings)`.
 The entire app therefore computes **client-side in a Web Worker** — it works
 offline, needs no server, and every view's full state lives in the URL, so any
-day / hour / method / 用事 combination is a shareable link. It runs on a
-**vendored, frozen** copy of the Zhirun engine (`src/engine/`, from
-`josephchng1/QMDJ`), which is never edited here and is re-synced deliberately.
+day / hour / method / 用事 combination is a shareable link. The Zhirun engine
+(`src/engine/`) lives here — this repo is its home since the QMDJ repo was
+consolidated into it — and every engine change must keep the reference suite
+(`npm run test:engine`) and golden fixtures green.
 
 ## Operating Context
 
@@ -49,8 +50,8 @@ day / hour / method / 用事 combination is a shareable link. It runs on a
 
 **Confirmed functionality**
 
-- **Month calendar** — each day shows a 12-segment bar (one per 时辰) plus a
-  whole-day quality band.
+- **Month calendar** — a date picker only; it carries no day-level rating
+  (directional quality lives per hour and per palace in the day panel).
 - **Day panel** — 12 时辰 ratings with 五不遇时 / 时空 flags, and the full 奇门盘
   for any hour with ← → hour paging.
 - **Patterns view** — a registry of 91 格局.
@@ -69,20 +70,21 @@ day / hour / method / 用事 combination is a shareable link. It runs on a
   alongside or on hover. This is what makes the interface legible to a
   non-practitioner without diluting the vocabulary.
 - **Mobile-first.** The phone is the primary screen, in the field.
-- **The engine is frozen.** `src/engine/` is vendored and must not be edited.
-- **Scoring is provisional.** `src/calendar/scoring.ts` is a coarse v1 heuristic
-  (conventional 门/星/神 auspiciousness + 五不遇时 + 时空), *not* authoritative
-  格局 evaluation. It must always be presented as provisional, and it is the
-  single swap point for the real registry-driven scoring.
+- **The engine is verified, not frozen.** `src/engine/` may change only with the
+  reference suite and golden fixtures passing.
+- **One scoring model.** The v2 per-palace model (`src/calendar/palace.ts`,
+  rolled up in `hour.ts`) grades the board, the day panel and search alike, so
+  a slot's grade never differs between screens.
 - **URL state is the sharing contract.** Link parameter shape is load-bearing;
   changing it breaks links already in clients' hands.
 
 ## Evidence on Hand
 
 - Specification and design docs in-repo: `README.md`,
-  `qmdj-app-architecture.md`, `qmdj-formations-registry.md` (+ `-v2`),
-  `qmdj-palace-direction-model.md` (+ `-v2`), `qmdj-date-search-plan.md`.
-- `QM OCR.pdf` — source material.
+  `qmdj-app-architecture.md`, `qmdj-formations-registry-v2.md`,
+  `qmdj-palace-direction-model-v2.md`, `qmdj-date-search-plan.md`; superseded
+  v1 specs in `docs/archive/`.
+- `QM OCR.pdf` — source material, kept locally (not in git).
 - Reference Qimen charts in the parent folder, used to validate the calculation
   algorithm.
 - Golden tests at `packages/engine/tests/golden`.

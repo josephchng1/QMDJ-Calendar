@@ -2,3 +2,15 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# Source scan kept locally (5.6 MB) — not needed to build or test
+QM OCR.pdf
+
+# Local agent/design tooling, not part of the app
+.agents/
+.claude/skills/
+.claude/settings.local.json
+.github/agents/
+.github/hooks/
+.github/skills/
+.impeccable/
