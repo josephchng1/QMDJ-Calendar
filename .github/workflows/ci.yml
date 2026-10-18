@@ -8,8 +8,9 @@
 #   2. fixtures   — golden fixture schema + provenance gate (no-fabrication rule)
 #   3. tests      — Vitest: golden truth, engine invariants, calendar/scoring
 #   4. build      — vite build must produce a production bundle
-#
-# The build artifact is uploaded so you can preview any commit's output.
+#   5. deploy     — pushes to main publish the build to GitHub Pages
+#                   (https://<owner>.github.io/<repo>/). One-time setup:
+#                   Settings → Pages → Source: "GitHub Actions".
 #
 # Runs on PRs into main, on pushes to main, and on demand.
 #
@@ -18,7 +19,6 @@
 #   • Parity (L4) and perf budgets (L5) as they land.
 #   • Cross-check the golden fixtures against a SECOND independent reference —
 #     they currently carry one source each, so the validator warns by design.
-#   • Add a deploy job when a production host is chosen.
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
 
@@ -59,12 +59,26 @@ jobs:
       - name: Engine reference suite (3088 checks, 置闰 scan 1900–2100)
         run: npm run test:engine
 
+      # Pages serves the app under /<repo>/, so build with that base path.
       - name: Build (vite)
-        run: npm run build
+        run: npm run build -- --base=/${{ github.event.repository.name }}/
 
       - name: Upload production build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: qmdj-calendar-dist-${{ github.sha }}
           path: dist
           retention-days: 14
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
