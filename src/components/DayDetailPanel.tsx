@@ -55,7 +55,7 @@ export function DayDetailPanel({
     .filter(Boolean);
 
   const curIndex = Math.min(selectedHour, hours.length - 1);
-  const calEvent = slotEvent(date, curIndex, summary.palaces);
+  const calEvent = slotEvent(date, curIndex, summary.palaces, chart.input.tzHours ?? 8);
   const pad2 = (n: number) => String(n).padStart(2, '0');
   const icsName = `qmdj-${date.y}${pad2(date.m)}${pad2(date.d)}-h${curIndex}.ics`;
 
@@ -99,7 +99,7 @@ export function DayDetailPanel({
           <div className="flex items-center gap-2">
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}
                     disabled={selectedHour === 0}>← 前一时辰</button>
-            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span></span>
+            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span> <span className="text-xs">UTC+8</span></span>
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}
                     disabled={selectedHour === 11}>后一时辰 →</button>
           </div>

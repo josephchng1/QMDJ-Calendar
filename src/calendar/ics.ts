@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // ics.ts — turn a chosen 时辰 into a calendar event (§6.4). Pure string building
 // (buildIcs / googleCalendarUrl / slotEvent are testable); downloadIcs touches
-// the DOM. Times are emitted as UTC (…Z) derived from the browser's local time,
-// so both .ics and Google Calendar place the block correctly regardless of TZ.
+// the DOM. Times are emitted as UTC (…Z) from the CHART's civil zone (UTC+8 by
+// default), not the browser's, so a client abroad gets the instant that was scored.
 // ─────────────────────────────────────────────────────────────────────────────
 import { scoreBand } from './bandsV2.ts';
 import { DIRECTION_LABEL } from './direction.ts';
@@ -17,9 +17,12 @@ export function slotEvent(
   date: { y: number; m: number; d: number },
   branchIndex: number,
   palaces: PalaceScore[],
+  tzHours = 8,
 ): CalEvent {
-  const startHour = (23 + branchIndex * 2) % 24;         // 子=23:00 … matches shichenWindow
-  const start = new Date(date.y, date.m - 1, date.d, startHour, 0, 0);
+  // 子 starts 23:00 the PREVIOUS day (the scored 子时 is sampled at 00:00 of `date`),
+  // matching shichenWindow. Date.UTC normalises the negative hour across the day edge.
+  // shortcut: with 晚子时次日 off, 23:00–24:00 is the prior day's chart; only 00–01 matches exactly.
+  const start = new Date(Date.UTC(date.y, date.m - 1, date.d, branchIndex * 2 - 1 - tzHours));
   const end = new Date(start.getTime() + 2 * 3600 * 1000);
 
   const prime: string[] = [], good: string[] = [];

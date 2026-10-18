@@ -71,7 +71,7 @@ export default function App() {
   // independently of the loaded month so ±1-day nav works across month boundaries.
   const dayTarget = ui.sel ?? today;
   const needDay = ui.view === 'calendar' && ui.sel != null;
-  const { hours: dayHours } = useDayDirections(
+  const { hours: dayHours, day: hoursDay, fresh: dayFresh, error: dayError } = useDayDirections(
     needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options, ui.activity ?? undefined);
 
   // Opening 时辰 for a freshly picked day. The calendar no longer projects the
@@ -80,10 +80,10 @@ export default function App() {
   // panel never paints on 子时 first. Fires only for a calendar pick (autoPeak);
   // an explicit hour — deep link, ±1 day, hour row, search slot — always wins.
   useLayoutEffect(() => {
-    if (!ui.autoPeak || !dayHours) return;
+    if (!ui.autoPeak || !dayFresh || !dayHours) return;   // never peak from the previous day's hours
     const peak = peakCellOf(dayHours.map((h) => h.summary));
     setUi((s) => (s.autoPeak ? { ...s, hour: peak?.branchIndex ?? 0, autoPeak: false } : s));
-  }, [ui.autoPeak, dayHours]);
+  }, [ui.autoPeak, dayFresh, dayHours]);
 
   // deep-link sync
   useEffect(() => {
@@ -182,9 +182,14 @@ export default function App() {
 
           {/* Day detail / hint */}
           <div>
-            {ui.sel && dayHours ? (
+            {ui.sel && dayError && !dayFresh ? (
+              <div className="panel p-8 text-center text-sm" style={{ minHeight: 200, color: 'var(--q-bad)' }}>
+                计算失败：{dayError}
+              </div>
+            ) : ui.sel && dayHours && hoursDay ? (
+              <div style={{ opacity: dayFresh ? 1 : 0.6, transition: 'opacity 150ms' }} aria-busy={!dayFresh}>
               <DayDetailPanel
-                date={ui.sel}
+                date={hoursDay}
                 hours={dayHours}
                 selectedHour={ui.hour}
                 onSelectHour={(i) => setUi((s) => ({ ...s, hour: i, autoPeak: false }))}
@@ -194,9 +199,10 @@ export default function App() {
                 activity={ui.activity}
                 onSelectActivity={(a) => setUi((s) => ({ ...s, activity: a }))}
               />
+              </div>
             ) : (
               <div className="panel p-8 text-center flex flex-col gap-2" style={{ minHeight: 200 }}>
-                <span className="text-sm" style={{ color: 'var(--text-dim)' }}>点选任一日期，查看当日 12 时辰与奇门盘</span>
+                <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{ui.sel ? '计算中…' : '点选任一日期，查看当日 12 时辰与奇门盘'}</span>
               </div>
             )}
           </div>

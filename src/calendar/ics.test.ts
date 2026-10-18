@@ -19,6 +19,14 @@ describe('ics export', () => {
     expect(ev.end.getTime() - ev.start.getTime()).toBe(2 * 3600 * 1000);
   });
 
+  it('places the 时辰 at its UTC+8 instant, 子时 starting the previous evening', () => {
+    expect(ev.start.toISOString()).toBe('2026-08-13T23:00:00.000Z');              // 辰 07:00 UTC+8
+    expect(slotEvent({ y: 2026, m: 8, d: 14 }, 0, palaces).start.toISOString())
+      .toBe('2026-08-13T15:00:00.000Z');                                         // 子 23:00 on the 13th, UTC+8
+    expect(slotEvent({ y: 2026, m: 3, d: 1 }, 0, palaces).start.toISOString())
+      .toBe('2026-02-28T15:00:00.000Z');                                         // across a month edge
+  });
+
   it('builds a valid VEVENT with UTC stamps', () => {
     const ics = buildIcs(ev);
     expect(ics).toContain('BEGIN:VCALENDAR');
