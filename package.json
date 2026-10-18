@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:fixtures": "node tooling/validate-fixtures.mjs",
     "test:watch": "vitest",
-    "test:golden": "vitest run packages/engine/tests/golden"
+    "test:golden": "vitest run packages/engine/tests/golden",
+    "test:engine": "node --experimental-strip-types packages/engine/tests/reference/run.ts"
   },
   "dependencies": {
     "react": "^19.0.0",

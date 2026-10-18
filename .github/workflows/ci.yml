@@ -56,6 +56,9 @@ jobs:
       - name: Unit tests (Vitest — golden fixtures + engine invariants)
         run: npm test
 
+      - name: Engine reference suite (3088 checks, 置闰 scan 1900–2100)
+        run: npm run test:engine
+
       - name: Build (vite)
         run: npm run build
 
