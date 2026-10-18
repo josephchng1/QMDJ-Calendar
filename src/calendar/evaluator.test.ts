@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { STEMS } from '../engine/ganzhi.ts';
 import type { Palace } from '../engine/board.ts';
 import type { Chart } from '../engine/index.ts';
-import { matchPalace, matchChart, evaluateChart } from './evaluator.ts';
+import { matchPalace, matchChart, evaluateChart, reconcile } from './evaluator.ts';
 import { PATTERNS_BY_ID } from './data/patterns.ts';
 
 // inert defaults: diPanStem '丁' is not a 仪 (no accidental 六仪击刑), tianPanStems []
@@ -68,5 +68,16 @@ describe('evaluateChart', () => {
   it('skips 中5', () => {
     const c = chart('乙', [palace({ palace: 5, tianPanStems: ['戊'], diPanStem: '丙' })]);
     expect(evaluateChart(c)).toHaveLength(0);
+  });
+});
+
+describe('reconcile — interaction rules within one palace', () => {
+  it('奇仪相合 (+吉门) rescues 乙庚被刑 — 和解 read, not 被刑', () => {
+    const c = chart('乙', [palace({ palace: 4, gate: '休门', tianPanStems: ['乙'], diPanStem: '庚' })]);
+    const raw = evaluateChart(c).filter((f) => f.palace === 4);
+    expect(raw.map((f) => f.id)).toContain('riqi-beixing');   // both fire before reconciling
+    const ids = reconcile(raw).map((f) => f.id);
+    expect(ids).toContain('qiyi-xianghe');
+    expect(ids).not.toContain('riqi-beixing');
   });
 });

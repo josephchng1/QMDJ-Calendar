@@ -10,8 +10,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:fixtures": "node tooling/validate-fixtures.mjs",
     "test:watch": "vitest",
-    "test:golden": "vitest run packages/engine/tests/golden"
+    "test:golden": "vitest run packages/engine/tests/golden",
+    "test:engine": "node --experimental-strip-types packages/engine/tests/reference/run.ts"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -26,6 +28,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^3.0.0"
   }
 }

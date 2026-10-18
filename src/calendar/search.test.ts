@@ -3,6 +3,10 @@
 // mode, not specific dates (those depend on the engine's verified output).
 import { describe, it, expect } from 'vitest';
 import { searchRange, type SearchQuery } from './search.ts';
+import { buildChart } from '../engine/index.ts';
+import { computeHourSummary } from './hour.ts';
+import { scoreBand, SCORE_GOOD } from './bandsV2.ts';
+import { HOUR_SAMPLE } from './summary.ts';
 
 const START = { y: 2026, m: 1, d: 1 };
 const base = (over: Partial<SearchQuery>): SearchQuery => ({ start: START, days: 7, mode: 'recommended', ...over });
@@ -17,10 +21,19 @@ describe('searchRange — recommended', () => {
   it('scans every day × 时辰', () => expect(r.scanned).toBe(7 * 12));
   it('ranks results by score, descending', () => expect(isSortedDesc(r.slots.map((s) => s.score))).toBe(true));
   it('never surfaces a vetoed (blocked) slot', () => expect(r.slots.every((s) => !s.blocked)).toBe(true));
-  it('never surfaces a 五不遇时 slot below the good cutoff', () =>
-    expect(r.slots.every((s) => !s.warnings.includes('五不遇时') || s.score >= 12)).toBe(true));
-  it('produces one day-score per day for the calendar overlay', () =>
-    expect(Object.keys(r.dayScores)).toHaveLength(7));
+  it('never surfaces 五不遇时, nor 时干入墓 below 吉', () => {
+    expect(r.slots.every((s) => !s.warnings.includes('五不遇时'))).toBe(true);
+    expect(r.slots.every((s) => !s.warnings.includes('时干入墓') || s.score >= SCORE_GOOD)).toBe(true);
+  });
+  it('shows the grade the day panel draws for the same 时辰 and 用事', () => {
+    for (const s of r.slots.slice(0, 5)) {
+      const chart = buildChart({ y: s.y, m: s.m, d: s.d, hh: HOUR_SAMPLE[s.branchIndex], mm: 0 });
+      const hs = computeHourSummary(chart, { kind: 'purpose', activity: 'launch' });
+      const best = Math.max(...hs.palaces.filter((p) => p.palace !== 5 && !p.blocked).map((p) => p.score));
+      expect(s.score).toBe(best);
+      expect(s.band).toBe(scoreBand(best, false));
+    }
+  });
 });
 
 describe('searchRange — by-formation', () => {

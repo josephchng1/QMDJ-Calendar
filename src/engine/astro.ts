@@ -202,7 +202,16 @@ function isJieByIndex(k: number): boolean {
  * Exact moment of the solar term whose unwrapped target longitude is
  * W = k*15deg + 360deg*cycle. Returns local-civil Julian Day (UTC+tzHours).
  */
+const termJdCache = new Map<string, number>();
 export function termJdLocal(k: number, cycle: number, tzHours = 8): number {
+  // Memoised: the solve is pure and was ~95% of buildChart's cost (every chart re-solved ~360 terms).
+  const key = `${k}|${cycle}|${tzHours}`;
+  let jd = termJdCache.get(key);
+  if (jd === undefined) termJdCache.set(key, jd = solveTermJdLocal(k, cycle, tzHours));
+  return jd;
+}
+
+function solveTermJdLocal(k: number, cycle: number, tzHours: number): number {
   const W = (k * 15) * Math.PI / 180 + PI2 * cycle;
   const t = solveSolarLongitude(W); // Julian centuries TD
   const jdTT = t * 36525 + 2451545.0;

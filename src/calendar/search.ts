@@ -5,16 +5,20 @@
 //   • by-formation      — every occurrence of a chosen 格局
 //   • filter            — require / avoid formations + score threshold
 //
-// Cost-ordered per slot: build chart → base 格局 score (scoring.ts) → activity
-// boost/exclude → mode gate → rank. Charts are deterministic, so results are a
-// pure function of the query. (Board memoisation across slots is a later perf
-// pass — see qmdj-date-search-plan.md; correctness first.)
+// Scored with the SAME v2 model the day panel draws (hour.ts → palace.ts): a
+// slot's score and band are its best direction's, so the grade a search row shows
+// is the grade the board shows when that slot is opened. 用事 is applied through
+// the purpose profile (用神 + preset boosts), exactly as the panel's 用事 picker.
 // ─────────────────────────────────────────────────────────────────────────────
 import { buildChart } from '../engine/index.ts';
-import { scoreHour, bandOf, type Band } from './scoring.ts';
+import { computeHourSummary, type HourSummary } from './hour.ts';
+import { evaluateChart } from './evaluator.ts';
+import { scoreBand, SCORE_GOOD } from './bandsV2.ts';
+import type { Band, ScoreProfile } from './palace.ts';
+import type { Direction } from './direction.ts';
 import { HOUR_SAMPLE, type CalendarOptions } from './summary.ts';
 import { ACTIVITY_PRESETS, type ActivityPreset } from './data/presets.ts';
-import type { ApplicationTag, Door, Spirit, Tier } from './data/patterns.ts';
+import type { ApplicationTag, Tier } from './data/patterns.ts';
 
 export type SearchMode = 'recommended' | 'by-formation' | 'filter';
 
@@ -28,8 +32,8 @@ export interface SearchQuery {
   filters?: {
     require?: string[];         // formation ids that must be present
     avoid?: string[];           // formation ids OR warning labels that must be absent
-    minScore?: number;
-    allowWuBuYu?: boolean;      // surface 五不遇时 slots (default: hide)
+    minScore?: number;          // on the v2 direction score (吉 ≥ SCORE_GOOD, 大吉 ≥ SCORE_PRIME)
+    allowWuBuYu?: boolean;      // surface 时干入墓 slots (default: hide); 五不遇时 is always blocked
   };
   role?: 'host' | 'mover';      // 主/客 for competition/travel
   options?: CalendarOptions;
@@ -39,50 +43,49 @@ export interface SearchQuery {
 export interface SlotResult {
   y: number; m: number; d: number; hh: number; branchIndex: number;
   dayGanzhi: string; hourGanzhi: string;
-  score: number; band: Band; blocked: boolean;
+  /** best direction's score + display band — what the board shows for this 时辰 */
+  score: number; band: Band; direction: Direction | null; blocked: boolean;
   formations: { id: string; name: string; tier: Tier }[];
   warnings: string[];
 }
 
 export interface SearchResult {
   slots: SlotResult[];
-  dayScores: Record<string, { score: number; band: Band }>; // 'YYYY-MM-DD' → calendar overlay
   scanned: number;
 }
 
-const BOOST = 15;
-const ACTING_GATE = 10;
-const ACTING_SPIRIT = 8;
-const ROLE_BONUS = 15;
+const ROLE_BONUS = 15;   // ranking tie-break only — never added to the shown score
 
-const pad = (n: number) => String(n).padStart(2, '0');
-const dayKey = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
 function addDays(s: { y: number; m: number; d: number }, off: number) {
   const dt = new Date(s.y, s.m - 1, s.d + off);
   return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
 }
 
-function actingBonus(zhiShiGate: string | null, zhiShiSpirit: string | null, preset: ActivityPreset): number {
-  let b = 0;
-  if (zhiShiGate && preset.goodGates.includes(zhiShiGate as Door)) b += ACTING_GATE;
-  if (zhiShiSpirit && preset.goodSpirits.includes(zhiShiSpirit as Spirit)) b += ACTING_SPIRIT;
-  return b;
-}
-function roleBonus(warnings: string[], role: SearchQuery['role'], preset: ActivityPreset): number {
-  if (!preset.roleAware || !role) return 0;
+function roleBonus(warnings: string[], role: SearchQuery['role'], preset: ActivityPreset | null): number {
+  if (!preset?.roleAware || !role) return 0;
   if (role === 'host' && warnings.includes('伏吟')) return ROLE_BONUS;   // 伏吟利主
   if (role === 'mover' && warnings.includes('反吟')) return ROLE_BONUS;  // 反吟利客
   return 0;
 }
 
+/** Best usable direction of an hour (中5 and blocked cells skipped), by score. */
+function bestDirection(hs: HourSummary): { score: number; direction: Direction | null } | null {
+  if (hs.chartBlocked) return null;
+  let best: { score: number; direction: Direction | null } | null = null;
+  for (const ps of hs.palaces) {
+    if (ps.palace === 5 || ps.blocked) continue;
+    if (!best || ps.score > best.score) best = { score: ps.score, direction: ps.direction };
+  }
+  return best;
+}
+
 export function searchRange(q: SearchQuery): SearchResult {
   const opts = q.options ?? {};
   const hours = q.hours ?? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-  const preset = q.activity ? ACTIVITY_PRESETS[q.activity] : null;
-  const goodThreshold = 12; // mirrors scoring THRESH.good — "strongly-formed" cutoff
+  const preset = q.mode === 'recommended' && q.activity ? ACTIVITY_PRESETS[q.activity] : null;
+  const profile: ScoreProfile = preset ? { kind: 'purpose', activity: q.activity! } : { kind: 'general' };
 
-  const slots: SlotResult[] = [];
-  const dayBest = new Map<string, number>();
+  const ranked: { slot: SlotResult; rank: number }[] = [];
   let scanned = 0;
 
   for (let off = 0; off < q.days; off++) {
@@ -90,80 +93,72 @@ export function searchRange(q: SearchQuery): SearchResult {
     for (const bi of hours) {
       const hh = HOUR_SAMPLE[bi];
       const chart = buildChart({ y, m, d, hh, mm: 0, ...opts });
-      const base = scoreHour(chart);
+      const hs = computeHourSummary(chart, profile);
       scanned++;
 
-      const matchedIds = new Set(base.formations.map((f) => f.id));
-      let score = base.score;
-      let excluded = base.blocked;
+      // Palace formations as the scorer reconciled them, plus chart-scope ones (天显时格 …).
+      const byId = new Map<string, { id: string; name: string; tier: Tier }>();
+      for (const ps of hs.palaces) for (const f of ps.matched) byId.set(f.id, { id: f.id, name: f.name, tier: f.tier });
+      for (const f of evaluateChart(chart)) if (f.scope === 'chart') byId.set(f.id, { id: f.id, name: f.name, tier: f.tier });
+      const matchedIds = new Set(byId.keys());
 
+      const best = bestDirection(hs);
+      const blocked = best == null;
+      const score = best?.score ?? 0;
+      const warnings = hs.chartWarnings;
+
+      let excluded = blocked;
       if (preset) {
-        for (const id of preset.boost) if (matchedIds.has(id)) score += BOOST;
-        const shi = chart.board.palaces[chart.board.zhiShiDisplayPalace - 1];
-        score += actingBonus(shi?.gate ?? null, shi?.spirit ?? null, preset);
-        score += roleBonus(base.warnings, q.role, preset);
         if (preset.excludeFormations.some((id) => matchedIds.has(id))) excluded = true;
-        if (preset.excludeWarnings.some((w) => base.warnings.includes(w))) excluded = true;
+        if (preset.excludeWarnings.some((w) => warnings.includes(w))) excluded = true;
       }
 
-      const k = dayKey(y, m, d);
-      const effective = excluded ? score - 1000 : score;
-      if (effective > (dayBest.get(k) ?? -Infinity)) dayBest.set(k, effective);
+      if (!passesMode(q, warnings, matchedIds, blocked, excluded, score)) continue;
 
-      if (!passesMode(q, base, matchedIds, excluded, score, goodThreshold)) continue;
-
-      slots.push({
-        y, m, d, hh, branchIndex: bi,
-        dayGanzhi: chart.pillars.day.name, hourGanzhi: chart.pillars.hour.name,
-        score, band: bandOf(score, base.blocked), blocked: base.blocked,
-        formations: base.formations.map((f) => ({ id: f.id, name: f.name, tier: f.tier })),
-        warnings: base.warnings,
+      ranked.push({
+        rank: blocked ? -Infinity : score + roleBonus(warnings, q.role, preset),
+        slot: {
+          y, m, d, hh, branchIndex: bi,
+          dayGanzhi: chart.pillars.day.name, hourGanzhi: chart.pillars.hour.name,
+          score, band: scoreBand(score, blocked), direction: best?.direction ?? null, blocked,
+          formations: [...byId.values()],
+          warnings,
+        },
       });
     }
   }
 
-  slots.sort((a, b) => b.score - a.score);
-
-  const dayScores: Record<string, { score: number; band: Band }> = {};
-  for (const [k, best] of dayBest) {
-    const blocked = best <= -900; // was pushed down by the -1000 exclusion offset
-    const shown = blocked ? best + 1000 : best;
-    dayScores[k] = { score: shown, band: bandOf(shown, blocked) };
-  }
-
-  return { slots: slots.slice(0, q.limit ?? 80), dayScores, scanned };
+  ranked.sort((a, b) => b.rank - a.rank);
+  return { slots: ranked.slice(0, q.limit ?? 80).map((r) => r.slot), scanned };
 }
 
 function passesMode(
   q: SearchQuery,
-  base: ReturnType<typeof scoreHour>,
+  warnings: string[],
   matchedIds: Set<string>,
+  blocked: boolean,
   excluded: boolean,
   score: number,
-  goodThreshold: number,
 ): boolean {
-  const hasWarn = (w: string) => base.warnings.includes(w);
-  // 五不遇时 / 时干入墓 are strong default-excludes: hide unless the slot is still
-  // strongly formed (score above the "good" cutoff) — matches the registry's
-  // "不一定都凶" allowance.
-  const defaultExcluded =
-    (hasWarn('五不遇时') || hasWarn('时干入墓')) && score < goodThreshold;
+  // 时干入墓 is a strong default-exclude: hide unless the slot still reaches 吉 —
+  // the registry's "不一定都凶" allowance. (五不遇时 blocks the whole hour in v2.)
+  const tomb = warnings.includes('时干入墓');
 
   switch (q.mode) {
     case 'recommended':
-      return !excluded && !defaultExcluded;
+      return !excluded && !(tomb && score < SCORE_GOOD);
 
     case 'by-formation':
-      // every occurrence of the chosen 格局 (blocked ones still shown, ranked low)
+      // every occurrence of the chosen 格局 (blocked ones still shown, ranked last)
       return q.formationId != null && matchedIds.has(q.formationId);
 
     case 'filter': {
-      if (base.blocked) return false;
+      if (blocked) return false;
       const f = q.filters ?? {};
       if (f.require && !f.require.every((id) => matchedIds.has(id))) return false;
-      if (f.avoid && f.avoid.some((x) => matchedIds.has(x) || base.warnings.includes(x))) return false;
+      if (f.avoid && f.avoid.some((x) => matchedIds.has(x) || warnings.includes(x))) return false;
       if (f.minScore != null && score < f.minScore) return false;
-      if (!f.allowWuBuYu && (hasWarn('五不遇时') || hasWarn('时干入墓'))) return false;
+      if (!f.allowWuBuYu && tomb) return false;
       return true;
     }
     default:

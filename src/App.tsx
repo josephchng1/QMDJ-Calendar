@@ -58,6 +58,7 @@ function initialState(): UiState {
 export default function App() {
   const [ui, setUi] = useState<UiState>(initialState);
   const [copied, setCopied] = useState(false);
+  const [searchKey, setSearchKey] = useState(0);
   const today = useMemo(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
@@ -71,19 +72,19 @@ export default function App() {
   // independently of the loaded month so ±1-day nav works across month boundaries.
   const dayTarget = ui.sel ?? today;
   const needDay = ui.view === 'calendar' && ui.sel != null;
-  const { hours: dayHours } = useDayDirections(
+  const { hours: dayHours, day: hoursDay, fresh: dayFresh, error: dayError } = useDayDirections(
     needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options, ui.activity ?? undefined);
 
   // Opening 时辰 for a freshly picked day. The calendar no longer projects the
-  // month (§6.5), so the peak comes from that day's own 12 时辰 once they arrive —
-  // the same cell computeDayProjection would have reported. Layout effect so the
+  // month (§6.5), so the peak comes from that day's own 12 时辰 once they arrive
+  // (peakCellOf). Layout effect so the
   // panel never paints on 子时 first. Fires only for a calendar pick (autoPeak);
   // an explicit hour — deep link, ±1 day, hour row, search slot — always wins.
   useLayoutEffect(() => {
-    if (!ui.autoPeak || !dayHours) return;
+    if (!ui.autoPeak || !dayFresh || !dayHours) return;   // never peak from the previous day's hours
     const peak = peakCellOf(dayHours.map((h) => h.summary));
     setUi((s) => (s.autoPeak ? { ...s, hour: peak?.branchIndex ?? 0, autoPeak: false } : s));
-  }, [ui.autoPeak, dayHours]);
+  }, [ui.autoPeak, dayFresh, dayHours]);
 
   // deep-link sync
   useEffect(() => {
@@ -151,15 +152,20 @@ export default function App() {
         </div>
       </header>
 
+      {/* Kept mounted while hidden so criteria + results survive view switches (§6.10); key bump = 重置. */}
+      <div hidden={ui.view !== 'search'}>
+        <SearchView
+          key={searchKey}
+          options={options}
+          onReset={() => setSearchKey((k) => k + 1)}
+          onOpenSlot={(y, m, d, branchIndex, activity) =>
+            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, autoPeak: false, activity }))}
+        />
+      </div>
+
       {ui.view === 'patterns' ? (
         <PatternsPanel selectedId={ui.fx} onSelect={(id) => setUi((s) => ({ ...s, fx: id }))} />
-      ) : ui.view === 'search' ? (
-        <SearchView
-          options={options}
-          onOpenSlot={(y, m, d, branchIndex) =>
-            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, autoPeak: false }))}
-        />
-      ) : (
+      ) : ui.view === 'search' ? null : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
           {/* Calendar */}
           <div className="panel p-4 flex flex-col gap-3">
@@ -182,9 +188,14 @@ export default function App() {
 
           {/* Day detail / hint */}
           <div>
-            {ui.sel && dayHours ? (
+            {ui.sel && dayError && !dayFresh ? (
+              <div className="panel p-8 text-center text-sm" style={{ minHeight: 200, color: 'var(--q-bad)' }}>
+                计算失败：{dayError}
+              </div>
+            ) : ui.sel && dayHours && hoursDay ? (
+              <div style={{ opacity: dayFresh ? 1 : 0.6, transition: 'opacity 150ms' }} aria-busy={!dayFresh}>
               <DayDetailPanel
-                date={ui.sel}
+                date={hoursDay}
                 hours={dayHours}
                 selectedHour={ui.hour}
                 onSelectHour={(i) => setUi((s) => ({ ...s, hour: i, autoPeak: false }))}
@@ -194,9 +205,10 @@ export default function App() {
                 activity={ui.activity}
                 onSelectActivity={(a) => setUi((s) => ({ ...s, activity: a }))}
               />
+              </div>
             ) : (
               <div className="panel p-8 text-center flex flex-col gap-2" style={{ minHeight: 200 }}>
-                <span className="text-sm" style={{ color: 'var(--text-dim)' }}>点选任一日期，查看当日 12 时辰与奇门盘</span>
+                <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{ui.sel ? '计算中…' : '点选任一日期，查看当日 12 时辰与奇门盘'}</span>
               </div>
             )}
           </div>

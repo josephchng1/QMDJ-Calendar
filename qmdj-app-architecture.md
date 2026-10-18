@@ -333,6 +333,20 @@ scoring — and the calibration gate — are untouched. The 用神 weights (`YON
 `classEmphasis`) are tuning knobs for Joe to validate. Search (v1) already had its
 own activity boost; this brings the same idea to the v2 direction board.
 
+### 6.10 Search view — state kept across views; 凶 formations in red (changed 2026-10-18)
+
+Two adjustments from Joe:
+
+1. **Search survives switching views.** Leaving 搜索 for 择日历 or 格局 (including
+   opening a result slot in the day panel) no longer discards the search. Coming
+   back shows the same criteria and the same ranked results. State is held for the
+   session in memory (not in the URL — deep links stay unchanged). A **重置** button
+   in the search panel clears the criteria back to defaults and empties the results.
+2. **Formation chips in search results are coloured by tier.** Matched 格局 whose
+   tier is 小凶 / 凶 / 大凶 (e.g. 朱雀投江) render in red (`--q-bad`); all other
+   tiers keep the gold chip. Previously every chip was gold, so 凶格 read as
+   auspicious.
+
 ---
 
 ## 7. Server & Database (Deliberately Thin)

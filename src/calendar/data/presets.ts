@@ -3,7 +3,7 @@
 // the 格局 that favour a given 用事 and away from the ones that ruin it.
 //
 // `boost` / `exclude*` reference PatternRule ids (patterns.ts). `excludeWarnings`
-// references the structural warning labels emitted by scoreHour (伏吟/反吟/五不遇时/
+// references the structural warning labels emitted by computeHourSummary (伏吟/反吟/五不遇时/
 // 时干入墓). The two absolute/nullifying vetoes (六仪击刑, 三奇入墓) already set
 // `blocked` in scoring, so they are excluded from every search regardless — no need
 // to list them here. Tokens are the engine's simplified forms.

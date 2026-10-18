@@ -1,15 +1,15 @@
 // Typed message bridge to the engine worker. Same call signatures a tRPC/server
 // layer would expose, so swapping worker<->server later is a one-line change (§6.2).
-import type { ChartInput, Chart } from '../engine/index.ts';
-import type { CalendarOptions, DaySummary, MonthSummary } from '../calendar/summary.ts';
+import type { Chart } from '../engine/index.ts';
+import type { CalendarOptions } from '../calendar/summary.ts';
 import type { SearchQuery, SearchResult } from '../calendar/search.ts';
-import type { HourSummary, MonthProjection } from '../calendar/hour.ts';
+import type { HourSummary } from '../calendar/hour.ts';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
 import type { WorkerRequest, WorkerResponse } from './engine.worker.ts';
 
 // Omit is NOT distributive over a union: keyof (A|B|C) is only the *common*
 // keys, so Omit<WorkerRequest, 'id'> would collapse to just { kind }. Distribute
-// it so each variant keeps its own payload (input / y,m,d / year,month...).
+// it so each variant keeps its own payload (query / y,m,d,opts).
 type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never;
 
 let worker: Worker | null = null;
@@ -27,6 +27,15 @@ function getWorker(): Worker {
       if (error) p.reject(new Error(error));
       else p.resolve(payload);
     };
+    // A worker that fails to load or crashes never answers — fail every pending
+    // call instead of leaving the UI waiting forever, and start fresh next time.
+    worker.onerror = (e) => {
+      e.preventDefault();
+      for (const p of pending.values()) p.reject(new Error(e.message || 'engine worker failed'));
+      pending.clear();
+      worker?.terminate();
+      worker = null;
+    };
   }
   return worker;
 }
@@ -40,15 +49,6 @@ function send<T>(req: DistributiveOmit<WorkerRequest, 'id'>, pick: (r: WorkerRes
   });
 }
 
-export function computeChart(input: ChartInput): Promise<Chart> {
-  return send({ kind: 'chart', input }, (r) => r.chart!);
-}
-export function computeDay(y: number, m: number, d: number, opts: CalendarOptions): Promise<DaySummary> {
-  return send({ kind: 'day', y, m, d, opts }, (r) => r.day!);
-}
-export function computeMonth(year: number, month: number, opts: CalendarOptions): Promise<MonthSummary> {
-  return send({ kind: 'month', year, month, opts }, (r) => r.month!);
-}
 export function computeSearch(query: SearchQuery): Promise<SearchResult> {
   return send({ kind: 'search', query }, (r) => r.search!);
 }
@@ -56,9 +56,4 @@ export function computeDayDirections(
   y: number, m: number, d: number, opts: CalendarOptions, activity?: ApplicationTag,
 ): Promise<{ chart: Chart; summary: HourSummary }[]> {
   return send({ kind: 'daydir', y, m, d, opts, activity }, (r) => r.dayDir!);
-}
-export function computeMonthProjection(
-  year: number, month: number, opts: CalendarOptions,
-): Promise<MonthProjection> {
-  return send({ kind: 'monthproj', year, month, opts }, (r) => r.monthProj!);
 }
