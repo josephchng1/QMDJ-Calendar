@@ -13,12 +13,12 @@
 import { buildChart } from '../engine/index.ts';
 import { computeHourSummary, type HourSummary } from './hour.ts';
 import { evaluateChart } from './evaluator.ts';
-import { scoreBand, SCORE_GOOD } from './bandsV2.ts';
-import type { Band, ScoreProfile } from './palace.ts';
+import { scoreBand } from './bandsV2.ts';
+import type { Band, ScoreProfile, GradedFormation, PalaceScore } from './palace.ts';
 import type { Direction } from './direction.ts';
 import { HOUR_SAMPLE, type CalendarOptions } from './summary.ts';
 import { ACTIVITY_PRESETS, type ActivityPreset } from './data/presets.ts';
-import type { ApplicationTag, Tier } from './data/patterns.ts';
+import { PATTERNS_BY_ID, type ApplicationTag } from './data/patterns.ts';
 
 export type SearchMode = 'recommended' | 'by-formation' | 'filter';
 
@@ -43,9 +43,12 @@ export interface SearchQuery {
 export interface SlotResult {
   y: number; m: number; d: number; hh: number; branchIndex: number;
   dayGanzhi: string; hourGanzhi: string;
-  /** best direction's score + display band — what the board shows for this 时辰 */
+  /** best usable direction's score + display band — what the board shows for this 时辰.
+   *  blocked ⇒ 不用 (ranked last); direction is null only when the whole 时辰 is 不用. */
   score: number; band: Band; direction: Direction | null; blocked: boolean;
-  formations: { id: string; name: string; tier: Tier }[];
+  /** 上格/下格 labels exactly as the board shows them: chart-scope + this direction's palace */
+  grades: GradedFormation[];
+  /** what affects this hour at this direction: chart-wide (伏吟/反吟 …) + this palace's (空亡/门迫 …) */
   warnings: string[];
 }
 
@@ -68,15 +71,18 @@ function roleBonus(warnings: string[], role: SearchQuery['role'], preset: Activi
   return 0;
 }
 
-/** Best usable direction of an hour (中5 and blocked cells skipped), by score. */
-function bestDirection(hs: HourSummary): { score: number; direction: Direction | null } | null {
-  if (hs.chartBlocked) return null;
-  let best: { score: number; direction: Direction | null } | null = null;
-  for (const ps of hs.palaces) {
-    if (ps.palace === 5 || ps.blocked) continue;
-    if (!best || ps.score > best.score) best = { score: ps.score, direction: ps.direction };
-  }
-  return best;
+/** The palace a row shows: when the query names palace-scope 格局, the palaces holding
+ *  them all (so the row's direction is where the searched 格局 sits), else every outer
+ *  palace; the best usable one by score (not blocked, holding none of `avoid` — the
+ *  用事's 忌格). If none is usable, the 格局's palace (shown as 不用), or null when the
+ *  whole 时辰 is 不用 with no particular direction. */
+function bestPalace(hs: HourSummary, want: string[], avoid: string[]): PalaceScore | null {
+  const outer = hs.palaces.filter((ps) => ps.palace !== 5);
+  const holding = want.length ? outer.filter((ps) => want.every((id) => ps.matched.some((m) => m.id === id))) : [];
+  const usable = (holding.length ? holding : outer)
+    .filter((ps) => !ps.blocked && !ps.matched.some((m) => avoid.includes(m.id)));
+  if (!usable.length) return holding[0] ?? null;
+  return usable.reduce((a, b) => (b.score > a.score ? b : a));
 }
 
 export function searchRange(q: SearchQuery): SearchResult {
@@ -84,6 +90,8 @@ export function searchRange(q: SearchQuery): SearchResult {
   const hours = q.hours ?? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
   const preset = q.mode === 'recommended' && q.activity ? ACTIVITY_PRESETS[q.activity] : null;
   const profile: ScoreProfile = preset ? { kind: 'purpose', activity: q.activity! } : { kind: 'general' };
+  const want = (q.mode === 'by-formation' ? [q.formationId ?? ''] : q.mode === 'filter' ? q.filters?.require ?? [] : [])
+    .filter((id) => PATTERNS_BY_ID[id]?.scope === 'palace');
 
   const ranked: { slot: SlotResult; rank: number }[] = [];
   let scanned = 0;
@@ -97,23 +105,19 @@ export function searchRange(q: SearchQuery): SearchResult {
       scanned++;
 
       // Palace formations as the scorer reconciled them, plus chart-scope ones (天显时格 …).
-      const byId = new Map<string, { id: string; name: string; tier: Tier }>();
-      for (const ps of hs.palaces) for (const f of ps.matched) byId.set(f.id, { id: f.id, name: f.name, tier: f.tier });
-      for (const f of evaluateChart(chart)) if (f.scope === 'chart') byId.set(f.id, { id: f.id, name: f.name, tier: f.tier });
-      const matchedIds = new Set(byId.keys());
+      const matchedIds = new Set<string>();
+      for (const ps of hs.palaces) for (const f of ps.matched) matchedIds.add(f.id);
+      for (const f of evaluateChart(chart)) if (f.scope === 'chart') matchedIds.add(f.id);
 
-      const best = bestDirection(hs);
-      const blocked = best == null;
-      const score = best?.score ?? 0;
+      // 不用 slots are still listed, ranked after everything else: 五不遇时, every candidate
+      // palace blocked or holding a 忌格 of this 用事, or a 用事-excluded 伏吟/反吟 (hour-wide).
       const warnings = hs.chartWarnings;
+      const best = bestPalace(hs, want, preset?.excludeFormations ?? []);
+      const blocked = !best || best.blocked || best.matched.some((m) => preset?.excludeFormations.includes(m.id))
+        || !!preset?.excludeWarnings.some((w) => warnings.includes(w));
+      const score = blocked ? 0 : best.score;
 
-      let excluded = blocked;
-      if (preset) {
-        if (preset.excludeFormations.some((id) => matchedIds.has(id))) excluded = true;
-        if (preset.excludeWarnings.some((w) => warnings.includes(w))) excluded = true;
-      }
-
-      if (!passesMode(q, warnings, matchedIds, blocked, excluded, score)) continue;
+      if (!passesMode(q, warnings, matchedIds, score)) continue;
 
       ranked.push({
         rank: blocked ? -Infinity : score + roleBonus(warnings, q.role, preset),
@@ -121,8 +125,8 @@ export function searchRange(q: SearchQuery): SearchResult {
           y, m, d, hh, branchIndex: bi,
           dayGanzhi: chart.pillars.day.name, hourGanzhi: chart.pillars.hour.name,
           score, band: scoreBand(score, blocked), direction: best?.direction ?? null, blocked,
-          formations: [...byId.values()],
-          warnings,
+          grades: [...hs.chartGrades, ...(best?.grades ?? [])],
+          warnings: [...new Set([...warnings, ...(best?.warnings ?? [])])],
         },
       });
     }
@@ -136,28 +140,24 @@ function passesMode(
   q: SearchQuery,
   warnings: string[],
   matchedIds: Set<string>,
-  blocked: boolean,
-  excluded: boolean,
   score: number,
 ): boolean {
-  // 时干入墓 is a strong default-exclude: hide unless the slot still reaches 吉 —
-  // the registry's "不一定都凶" allowance. (五不遇时 blocks the whole hour in v2.)
+  // 不吉 / 不用 slots are not hidden — they simply rank low (by score; 不用 last).
   const tomb = warnings.includes('时干入墓');
 
   switch (q.mode) {
     case 'recommended':
-      return !excluded && !(tomb && score < SCORE_GOOD);
+      return true;
 
     case 'by-formation':
-      // every occurrence of the chosen 格局 (blocked ones still shown, ranked last)
+      // every occurrence of the chosen 格局
       return q.formationId != null && matchedIds.has(q.formationId);
 
     case 'filter': {
-      if (blocked) return false;
       const f = q.filters ?? {};
       if (f.require && !f.require.every((id) => matchedIds.has(id))) return false;
       if (f.avoid && f.avoid.some((x) => matchedIds.has(x) || warnings.includes(x))) return false;
-      if (f.minScore != null && score < f.minScore) return false;
+      if (f.minScore && score < f.minScore) return false;   // 0 = no threshold
       if (!f.allowWuBuYu && tomb) return false;
       return true;
     }
