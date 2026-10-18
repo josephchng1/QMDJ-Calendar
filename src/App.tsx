@@ -58,6 +58,7 @@ function initialState(): UiState {
 export default function App() {
   const [ui, setUi] = useState<UiState>(initialState);
   const [copied, setCopied] = useState(false);
+  const [searchKey, setSearchKey] = useState(0);
   const today = useMemo(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
@@ -151,15 +152,20 @@ export default function App() {
         </div>
       </header>
 
-      {ui.view === 'patterns' ? (
-        <PatternsPanel selectedId={ui.fx} onSelect={(id) => setUi((s) => ({ ...s, fx: id }))} />
-      ) : ui.view === 'search' ? (
+      {/* Kept mounted while hidden so criteria + results survive view switches (§6.10); key bump = 重置. */}
+      <div hidden={ui.view !== 'search'}>
         <SearchView
+          key={searchKey}
           options={options}
+          onReset={() => setSearchKey((k) => k + 1)}
           onOpenSlot={(y, m, d, branchIndex, activity) =>
             setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, autoPeak: false, activity }))}
         />
-      ) : (
+      </div>
+
+      {ui.view === 'patterns' ? (
+        <PatternsPanel selectedId={ui.fx} onSelect={(id) => setUi((s) => ({ ...s, fx: id }))} />
+      ) : ui.view === 'search' ? null : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">
           {/* Calendar */}
           <div className="panel p-4 flex flex-col gap-3">

@@ -14,8 +14,10 @@ const RANGES = [30, 60, 90, 180];
 const FORMATIONS = [...ALL_PATTERNS].sort((a, b) => a.name.localeCompare(b.name));
 const NAME_BY_ID = Object.fromEntries(ALL_PATTERNS.map((p) => [p.id, p.name]));
 
-export function SearchView({ options, onOpenSlot }: {
+export function SearchView({ options, onOpenSlot, onReset }: {
   options: CalendarOptions;
+  /** 重置: parent remounts this view, restoring default criteria and clearing results */
+  onReset: () => void;
   /** activity: the 用事 the slot was ranked for, so the board opens graded the same way */
   onOpenSlot: (y: number, m: number, d: number, branchIndex: number, activity: ApplicationTag | null) => void;
 }) {
@@ -131,9 +133,12 @@ export function SearchView({ options, onOpenSlot }: {
           </div>
         )}
 
-        <button className="seg rounded-lg px-4 py-2 text-sm self-start" data-active onClick={run}>
-          搜索 →
-        </button>
+        <div className="flex gap-2">
+          <button className="seg rounded-lg px-4 py-2 text-sm" data-active onClick={run}>
+            搜索 →
+          </button>
+          <button className="seg rounded-lg px-4 py-2 text-sm" onClick={onReset}>重置</button>
+        </div>
       </div>
 
       {/* results */}
@@ -178,10 +183,14 @@ function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onCl
         {slot.blocked ? '不用' : `${slot.direction ? DIRECTION_LABEL[slot.direction] + '方 ' : ''}${V2_BAND_LABEL[slot.band]} ${Math.round(slot.score)}`}
       </span>
       <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
-        {slot.formations.slice(0, 3).map((f) => (
-          <span key={f.id} className="text-[10px] px-1.5 py-0.5 rounded"
-                style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>{f.name}</span>
-        ))}
+        {slot.formations.slice(0, 3).map((f) => {
+          const bad = f.tier.endsWith('inauspicious');   // 小凶 / 凶 / 大凶 → red (§6.10)
+          return (
+            <span key={f.id} className="text-[10px] px-1.5 py-0.5 rounded"
+                  style={bad ? { color: 'var(--q-bad)', border: '1px solid var(--border)' }
+                             : { color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>{f.name}</span>
+          );
+        })}
         {slot.warnings.slice(0, 2).map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>

@@ -57,7 +57,8 @@ consolidated into it — and every engine change must keep the reference suite
 - **Patterns view** — a registry of 91 格局.
 - **Search view** — recommended and by-formation modes over 30/60/90/180-day
   ranges, filtered by 用事, 主/客 role, required and avoided formations, minimum
-  score, and a 五不遇时 allowance.
+  score, and a 五不遇时 allowance. Criteria and results persist while switching
+  views (reset with 重置); 凶 formation chips in results show in red.
 - **12 用事 presets** — 开业开张, 签约合作, 合夥谈判, 求财投资, 扩张远图, 竞争销售,
   出行执行, 上官赴任, 动土修造, 婚姻和合, 谋略布局, 考试文书.
 - **Per-palace direction grading** against the selected 用事.
