@@ -75,8 +75,8 @@ export default function App() {
     needDay ? dayTarget.y : null, dayTarget.m, dayTarget.d, options, ui.activity ?? undefined);
 
   // Opening 时辰 for a freshly picked day. The calendar no longer projects the
-  // month (§6.5), so the peak comes from that day's own 12 时辰 once they arrive —
-  // the same cell computeDayProjection would have reported. Layout effect so the
+  // month (§6.5), so the peak comes from that day's own 12 时辰 once they arrive
+  // (peakCellOf). Layout effect so the
   // panel never paints on 子时 first. Fires only for a calendar pick (autoPeak);
   // an explicit hour — deep link, ±1 day, hour row, search slot — always wins.
   useLayoutEffect(() => {
@@ -156,8 +156,8 @@ export default function App() {
       ) : ui.view === 'search' ? (
         <SearchView
           options={options}
-          onOpenSlot={(y, m, d, branchIndex) =>
-            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, autoPeak: false }))}
+          onOpenSlot={(y, m, d, branchIndex, activity) =>
+            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, autoPeak: false, activity }))}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] items-start">

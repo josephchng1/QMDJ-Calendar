@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildChart } from '../engine/index.ts';
-import { computeHourSummary, computeDayProjection, peakCellOf, hourRoleFavour } from './hour.ts';
+import { computeHourSummary, peakCellOf, hourRoleFavour } from './hour.ts';
 import { HOUR_SAMPLE } from './summary.ts';
 import type { Band } from './palace.ts';
 
@@ -48,27 +48,18 @@ describe('computeHourSummary — the hour is DESCRIBED, not scored', () => {
   });
 });
 
-describe('computeDayProjection — the day is a PROJECTION, not a mean', () => {
-  const proj = computeDayProjection(2026, 7, 6);
-  it('reports a peak cell + cell counts, not an averaged score', () => {
-    expect(proj).not.toHaveProperty('dayScore');
-    expect(typeof proj.primeCells).toBe('number');
-    expect(typeof proj.goodCells).toBe('number');
-    if (proj.peak) {
-      expect(BANDS).toContain(proj.peak.band);
-      expect(proj.peak.palace).toBeGreaterThanOrEqual(1);
-    }
-  });
-});
-
-describe('peakCellOf — one peak implementation, shared', () => {
-  // The day panel derives a freshly picked day's opening 时辰 from the 12 时辰 it
-  // already loaded, instead of the calendar projecting the whole month for it.
-  // That is only safe while both paths agree on what "peak" means.
-  it("reproduces computeDayProjection's peak from the same 12 时辰", () => {
+describe('peakCellOf — the day is a PROJECTION, not a mean', () => {
+  it('picks the best band, then the highest score, over usable cells', () => {
     const summaries = HOUR_SAMPLE.map((hh) =>
       computeHourSummary(buildChart({ y: 2026, m: 7, d: 6, hh, mm: 0 })));
-    expect(peakCellOf(summaries)).toEqual(computeDayProjection(2026, 7, 6).peak);
+    const peak = peakCellOf(summaries)!;
+    const rank = (b: Band) => BANDS.length - 1 - BANDS.indexOf(b);
+    const cells = summaries.flatMap((hs) => hs.chartBlocked ? []
+      : hs.palaces.filter((p) => p.palace !== 5 && !p.blocked));
+    const bestRank = Math.max(...cells.map((p) => rank(p.band)));
+    expect(rank(peak.band)).toBe(bestRank);
+    expect(peak.score).toBe(Math.max(...cells.filter((p) => rank(p.band) === bestRank).map((p) => p.score)));
+    expect(summaries[peak.branchIndex].palaces[peak.palace - 1].score).toBe(peak.score);
   });
 
   it('has no peak when there is nothing to rank', () => {

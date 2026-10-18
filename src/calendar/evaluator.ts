@@ -5,7 +5,7 @@
 // gate/spirit/天盘 wonder). Chart-scope rules (天显时) read the pillars once.
 // A `when` clause is an AND of the fields present; `any` is an OR of sub-clauses
 // ANDed with the sibling scalar fields. Conditional-tier SIGN is NOT resolved
-// here — the evaluator only reports matches; scoring.ts resolves valence.
+// here — the evaluator only reports matches; palace.ts resolves valence.
 // ─────────────────────────────────────────────────────────────────────────────
 import { STEMS } from '../engine/ganzhi.ts';
 import type { Palace } from '../engine/board.ts';
@@ -111,5 +111,19 @@ export function evaluateChart(chart: Chart): MatchedFormation[] {
     for (const r of PALACE_RULES) if (matchPalace(r.when, p, ctx)) out.push(toMatched(r, p.palace));
   }
   for (const r of CHART_RULES) if (matchChart(r.when, chart)) out.push(toMatched(r));
+  return out;
+}
+
+// Interaction reconciliation, run per palace before scoring (palace.ts).
+const RESCUE_QIYI = ['riqi-rumu', 'qinglong-taozou', 'huoru-jinxiang', 'zhuque-toujiang']; // 奇⇢仪 凶 pairs
+const SANZHA = ['san-zha-zhen', 'san-zha-zhong', 'san-zha-xiu'];
+
+/** Resolve the interaction rules within a single palace's matched formations. */
+export function reconcile(list: MatchedFormation[]): MatchedFormation[] {
+  const has = (id: string) => list.some((f) => f.id === id);
+  let out = list;
+  if (has('qiyi-xianghe')) out = out.filter((f) => f.id !== 'riqi-beixing');   // 吉门 → 和解, not 被刑
+  if (has('sanqi-deshi')) out = out.filter((f) => !RESCUE_QIYI.includes(f.id)); // 得使 rescues 奇⇢仪 凶
+  if (out.some((f) => SANZHA.includes(f.id))) out = out.filter((f) => f.id !== 'sanqi-zhiling'); // count once
   return out;
 }

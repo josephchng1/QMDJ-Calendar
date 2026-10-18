@@ -22,8 +22,7 @@ import {
   isLiuYiJiXing, isSanQiRuMu, isHourStemTomb, isSanQiControlled,
   isWuBuYuShi, palaceOfTianStem, menGongRelation, type MenGong,
 } from './data/structural.ts';
-import { evaluateChart, type MatchedFormation } from './evaluator.ts';
-import { reconcile } from './scoring.ts';
+import { evaluateChart, reconcile, type MatchedFormation } from './evaluator.ts';
 import { ACTIVITY_PRESETS } from './data/presets.ts';
 import { purposeProfile, YONGSHEN } from './profiles.ts';
 import {

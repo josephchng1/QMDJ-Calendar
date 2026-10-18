@@ -4,7 +4,10 @@ import type { SearchQuery, SearchMode, SlotResult } from '../calendar/search.ts'
 import { useSearch } from '../hooks/useSearch.ts';
 import { ACTIVITY_ORDER, ACTIVITY_PRESETS } from '../calendar/data/presets.ts';
 import { ALL_PATTERNS } from '../calendar/data/patterns.ts';
-import { bandColor, BAND_LABEL, scorePercent, shichenWindow } from '../calendar/bands.ts';
+import { shichenWindow } from '../calendar/bands.ts';
+import { V2_BAND_COLOR, V2_BAND_LABEL, SCORE_PRIME } from '../calendar/bandsV2.ts';
+import { DIRECTION_LABEL } from '../calendar/direction.ts';
+import type { ApplicationTag } from '../calendar/data/patterns.ts';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const RANGES = [30, 60, 90, 180];
@@ -13,7 +16,8 @@ const NAME_BY_ID = Object.fromEntries(ALL_PATTERNS.map((p) => [p.id, p.name]));
 
 export function SearchView({ options, onOpenSlot }: {
   options: CalendarOptions;
-  onOpenSlot: (y: number, m: number, d: number, branchIndex: number) => void;
+  /** activity: the 用事 the slot was ranked for, so the board opens graded the same way */
+  onOpenSlot: (y: number, m: number, d: number, branchIndex: number, activity: ApplicationTag | null) => void;
 }) {
   const now = useMemo(() => new Date(), []);
   const [mode, setMode] = useState<SearchMode>('recommended');
@@ -117,12 +121,12 @@ export function SearchView({ options, onOpenSlot }: {
                              onAdd={(id) => addTo(setAvoid, id)} onRemove={(id) => removeFrom(setAvoid, id)} />
             <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-dim)' }}>
               最低分 {minScore}
-              <input type="range" min={-40} max={80} step={5} value={minScore}
+              <input type="range" min={0} max={SCORE_PRIME * 2} step={8} value={minScore}
                      onChange={(e) => setMinScore(Number(e.target.value))} className="flex-1" />
             </label>
             <button className="seg rounded-lg px-2.5 py-1 text-xs self-start" data-active={allowWuBuYu}
                     onClick={() => setAllowWuBuYu((v) => !v)}>
-              {allowWuBuYu ? '含五不遇时' : '排除五不遇时'}
+              {allowWuBuYu ? '含时干入墓' : '排除时干入墓'}
             </button>
           </div>
         )}
@@ -145,7 +149,7 @@ export function SearchView({ options, onOpenSlot }: {
             <div className="flex flex-col gap-1.5 max-h-[74vh] overflow-y-auto pr-1">
               {result.slots.map((s, i) => (
                 <SlotRow key={`${s.y}-${s.m}-${s.d}-${s.hh}`} slot={s} rank={i + 1}
-                         onClick={() => onOpenSlot(s.y, s.m, s.d, s.branchIndex)} />
+                         onClick={() => onOpenSlot(s.y, s.m, s.d, s.branchIndex, query?.mode === 'recommended' ? query.activity ?? null : null)} />
               ))}
             </div>
           </>
@@ -156,7 +160,7 @@ export function SearchView({ options, onOpenSlot }: {
 }
 
 function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onClick: () => void }) {
-  const c = bandColor(slot.band);
+  const c = V2_BAND_COLOR[slot.band];
   return (
     <button onClick={onClick}
             className="cell w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left"
@@ -170,7 +174,9 @@ function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onCl
         {shichenWindow(slot.branchIndex)}
       </span>
       <span className="text-sm gold">{slot.hourGanzhi}</span>
-      <span className="text-xs font-medium" style={{ color: c }}>{BAND_LABEL[slot.band]} {scorePercent(slot.score)}</span>
+      <span className="text-xs font-medium" style={{ color: c }}>
+        {slot.blocked ? '不用' : `${slot.direction ? DIRECTION_LABEL[slot.direction] + '方 ' : ''}${V2_BAND_LABEL[slot.band]} ${Math.round(slot.score)}`}
+      </span>
       <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
         {slot.formations.slice(0, 3).map((f) => (
           <span key={f.id} className="text-[10px] px-1.5 py-0.5 rounded"
