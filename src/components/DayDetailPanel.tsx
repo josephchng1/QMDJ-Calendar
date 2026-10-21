@@ -24,7 +24,7 @@ export function DayDetailPanel({
 }: {
   date: { y: number; m: number; d: number };
   hours: DirHour[];
-  selectedHour: number;
+  selectedHour: number | null;   // null = no 时辰 chosen yet
   onSelectHour: (i: number) => void;
   onPrevDay: () => void;
   onNextDay: () => void;
@@ -33,7 +33,8 @@ export function DayDetailPanel({
   onSelectActivity: (a: ApplicationTag | null) => void;
 }) {
   const [tab, setTab] = useState<Tab>('hours');
-  const cur = hours[Math.min(selectedHour, hours.length - 1)] ?? hours[0];
+  const curIndex = Math.min(selectedHour ?? 0, hours.length - 1);
+  const cur = hours[curIndex] ?? hours[0];
   const chart = cur.chart;
   const summary = cur.summary;
 
@@ -47,15 +48,15 @@ export function DayDetailPanel({
   });
 
   const openChart = (i: number) => { onSelectHour(i); setTab('chart'); };
-  const step = (delta: number) => onSelectHour(Math.min(11, Math.max(0, selectedHour + delta)));
+  const step = (delta: number) => onSelectHour(Math.min(11, Math.max(0, curIndex + delta)));
 
   const roleText = summary.hourRoleFavour === 'mover' ? '客 · 主动出击' : '主 · 按兵不动';
   const emergency = summary.emergencyDirections
     .map((p) => DIRECTION_LABEL[directionOf(p)!] ?? '')
     .filter(Boolean);
 
-  const curIndex = Math.min(selectedHour, hours.length - 1);
-  const calEvent = slotEvent(date, curIndex, summary.palaces, chart.input.tzHours ?? 8);
+  const tz = chart.input.tzHours ?? 8;
+  const calEvent = slotEvent(date, curIndex, summary.palaces, tz);
   const pad2 = (n: number) => String(n).padStart(2, '0');
   const icsName = `qmdj-${date.y}${pad2(date.m)}${pad2(date.d)}-h${curIndex}.ics`;
 
@@ -94,12 +95,18 @@ export function DayDetailPanel({
         </div>
       )}
 
-      {tab === 'chart' && (
+      {tab === 'chart' && selectedHour == null && (
+        <div className="p-8 text-center text-sm" style={{ color: 'var(--text-dim)' }}>
+          在「时辰总览」点选一个时辰，查看其奇门盘
+        </div>
+      )}
+
+      {tab === 'chart' && selectedHour != null && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}
                     disabled={selectedHour === 0}>← 前一时辰</button>
-            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span> <span className="text-xs">UTC+8</span></span>
+            <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span> <span className="text-xs">UTC{tz < 0 ? '−' : '+'}{Math.abs(tz)}</span></span>
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}
                     disabled={selectedHour === 11}>后一时辰 →</button>
           </div>
