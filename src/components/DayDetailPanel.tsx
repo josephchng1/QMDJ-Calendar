@@ -120,7 +120,7 @@ export function DayDetailPanel({
             <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span> <span className="text-xs">UTC{tz < 0 ? '−' : '+'}{Math.abs(tz)}</span></span>
             <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}>后一时辰 →</button>
           </div>
-          <SummaryHeader chart={chart} />
+          <FourPillarsBar chart={chart} />
 
           {/* 主客 / 急则从神 / chart warnings — direction context for the graded board */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -129,6 +129,8 @@ export function DayDetailPanel({
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
           </div>
+
+          <PalaceGrid board={chart.board} scores={summary.palaces} hourStem={hourStem} />
 
           {/* add-to-calendar for the selected 时辰 (client-side .ics + Google) */}
           <div className="flex items-center gap-2 text-xs">
@@ -139,8 +141,7 @@ export function DayDetailPanel({
                href={googleCalendarUrl(calEvent)} target="_blank" rel="noopener noreferrer">Google 日历</a>
           </div>
 
-          <FourPillarsBar chart={chart} />
-          <PalaceGrid board={chart.board} scores={summary.palaces} hourStem={hourStem} />
+          <SummaryHeader chart={chart} />
         </div>
       )}
     </div>

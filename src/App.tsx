@@ -119,13 +119,15 @@ export default function App() {
     const dt = new Date(s.year, s.month - 1 + delta, 1);
     return { ...s, year: dt.getFullYear(), month: dt.getMonth() + 1, sel: null };
   });
-  // Today opens on the current 时辰 (read fresh, the page may have been open a while); any other day on none.
-  const selectDay = (day: { y: number; m: number; d: number }) => { setOpenOnChart(false); setUi((s) => {
+  // A new day keeps the 时辰 already chosen; with none chosen, today opens on the current 时辰
+  // (read fresh, the page may have been open a while) and any other day on none. 今天/此刻 always jump to now.
+  const selectDay = (day: { y: number; m: number; d: number }, toNow = false) => { setOpenOnChart(false); setUi((s) => {
     const now = nowIn(s.tz);
     const isToday = now.y === day.y && now.m === day.m && now.d === day.d;
-    return { ...s, sel: { y: day.y, m: day.m, d: day.d }, year: day.y, month: day.m, hour: isToday ? now.hour : null };
+    const hour = toNow ? now.hour : s.hour ?? (isToday ? now.hour : null);
+    return { ...s, sel: { y: day.y, m: day.m, d: day.d }, year: day.y, month: day.m, hour };
   }); };
-  const goToday = () => selectDay(nowIn(ui.tz));
+  const goToday = () => selectDay(nowIn(ui.tz), true);
 
   // ±1 day, following across month boundaries; keep the current 时辰 and tab.
   const shiftDay = (delta: number) => setUi((s) => {
