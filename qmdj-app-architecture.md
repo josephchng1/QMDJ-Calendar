@@ -422,6 +422,10 @@ Six feature updates from Joe, captured here as the working spec. Reference for
 2026-07-08 酉时, 阴遁八局[9置闰], 值符 甲寅癸·天冲落中五宫, 值使 伤门落中五宫).
 Ordered as given; not yet implemented.
 
+**2026-11-10 — build spec written, not built:** §10.2, §10.5, the §10.6 markers, the
+§6.5 lunar / 干支 lines, plus a 此刻 button and a 设置 panel are specified in
+`qmdj-settings-markers-spec.md`. Where that file and this section differ, that file wins.
+
 ### 10.1 Date search — three modes (extends §4.1 `searchRange`, §6.3)
 Search a date/time range and surface good slots by any of:
 1. **Recommended** — rank every 时辰 by the current quality score, best first.
