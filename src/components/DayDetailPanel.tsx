@@ -48,7 +48,13 @@ export function DayDetailPanel({
   });
 
   const openChart = (i: number) => { onSelectHour(i); setTab('chart'); };
-  const step = (delta: number) => onSelectHour(Math.min(11, Math.max(0, curIndex + delta)));
+  // Stepping past 亥 / before 子 rolls into the next / previous day.
+  const step = (delta: number) => {
+    const next = curIndex + delta;
+    if (next > 11) { onNextDay(); onSelectHour(0); }
+    else if (next < 0) { onPrevDay(); onSelectHour(11); }
+    else onSelectHour(next);
+  };
 
   const roleText = summary.hourRoleFavour === 'mover' ? '客 · 主动出击' : '主 · 按兵不动';
   const emergency = summary.emergencyDirections
@@ -104,11 +110,9 @@ export function DayDetailPanel({
       {tab === 'chart' && selectedHour != null && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}
-                    disabled={selectedHour === 0}>← 前一时辰</button>
+            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(-1)}>← 前一时辰</button>
             <span className="text-sm mx-auto" style={{ color: 'var(--text-dim)' }}>{BRANCH[curIndex]}时 <span className="tabular-nums">{shichenWindow(curIndex)}</span> <span className="text-xs">UTC{tz < 0 ? '−' : '+'}{Math.abs(tz)}</span></span>
-            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}
-                    disabled={selectedHour === 11}>后一时辰 →</button>
+            <button className="seg rounded-lg px-3 py-1.5 text-sm" onClick={() => step(1)}>后一时辰 →</button>
           </div>
           <SummaryHeader chart={chart} />
 
