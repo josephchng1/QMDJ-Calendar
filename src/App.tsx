@@ -8,6 +8,8 @@ import { useDayDirections } from './hooks/useDayDirections.ts';
 import { Legend } from './components/Legend.tsx';
 import { ACTIVITY_ORDER } from './calendar/data/presets.ts';
 import type { ApplicationTag } from './calendar/data/patterns.ts';
+import { SettingsContext, parseSettings, SETTINGS_KEY, type DisplaySettings } from './settings.ts';
+import { SettingsPanel, Check, SETTINGS_PANEL_ID } from './components/SettingsPanel.tsx';
 
 type Method = 'zhirun' | 'chaibu';
 type View = 'calendar' | 'patterns' | 'search';
@@ -70,6 +72,16 @@ export default function App() {
   const [ui, setUi] = useState<UiState>(initialState);
   const [copied, setCopied] = useState(false);
   const [searchKey, setSearchKey] = useState(0);
+  // Display preferences: localStorage only (storage may throw in private windows).
+  const [settings, setSettings] = useState<DisplaySettings>(() => {
+    try { return parseSettings(localStorage.getItem(SETTINGS_KEY)); } catch { return parseSettings(null); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* defaults next visit */ }
+  }, [settings]);
+  const settingsCtx = useMemo(() => ({
+    settings, set: (patch: Partial<DisplaySettings>) => setSettings((s) => ({ ...s, ...patch })),
+  }), [settings]);
   const today = useMemo(() => nowIn(ui.tz), [ui.tz]);
 
   const options: CalendarOptions = useMemo(() => ({
@@ -130,6 +142,7 @@ export default function App() {
   );
 
   return (
+    <SettingsContext value={settingsCtx}>
     <div className="min-h-full max-w-6xl mx-auto px-4 py-6">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-2 mb-5">
         <h1 className="text-xl font-semibold gold tracking-widest">奇門遁甲 · 择日历</h1>
@@ -147,18 +160,23 @@ export default function App() {
             <>
               <Toggle active={ui.method === 'zhirun'} onClick={() => setUi((s) => ({ ...s, method: 'zhirun' }))}>置闰</Toggle>
               <Toggle active={ui.method === 'chaibu'} onClick={() => setUi((s) => ({ ...s, method: 'chaibu' }))}>拆补</Toggle>
-              <Toggle active={ui.spiritVariant} onClick={() => setUi((s) => ({ ...s, spiritVariant: !s.spiritVariant }))}>神·变体</Toggle>
-              <Toggle active={ui.lateZiNextDay} onClick={() => setUi((s) => ({ ...s, lateZiNextDay: !s.lateZiNextDay }))}>晚子时次日</Toggle>
             </>
           )}
-          <select className="seg rounded-lg px-2 py-1.5 text-xs" value={ui.tz} title="时区（盘与「今天」按此计算）"
-                  onChange={(e) => setUi((s) => ({ ...s, tz: +e.target.value }))}
-                  style={{ background: 'var(--bg-cell-2)', color: 'var(--text)' }}>
-            {(TZ_OFFSETS.includes(ui.tz) ? TZ_OFFSETS : [...TZ_OFFSETS, ui.tz].sort((a, b) => a - b))
-              .map((o) => <option key={o} value={o}>{tzLabel(o)}</option>)}
-          </select>
+          <button className="seg rounded-lg px-3 py-1.5 text-xs" popoverTarget={SETTINGS_PANEL_ID}>设置</button>
           <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={share}>{copied ? '已复制 ✓' : '复制链接'}</button>
         </div>
+        <SettingsPanel chart={<>
+          <Check checked={ui.spiritVariant} onChange={(v) => setUi((s) => ({ ...s, spiritVariant: v }))}>神·变体（勾陈/朱雀）</Check>
+          <Check checked={ui.lateZiNextDay} onChange={(v) => setUi((s) => ({ ...s, lateZiNextDay: v }))}>晚子时算次日</Check>
+          <label className="flex items-center gap-2">时区
+            <select className="seg rounded-lg px-2 py-1.5 text-xs" value={ui.tz} title="时区（盘与「今天」按此计算）"
+                    onChange={(e) => setUi((s) => ({ ...s, tz: +e.target.value }))}
+                    style={{ background: 'var(--bg-cell-2)', color: 'var(--text)' }}>
+              {(TZ_OFFSETS.includes(ui.tz) ? TZ_OFFSETS : [...TZ_OFFSETS, ui.tz].sort((a, b) => a - b))
+                .map((o) => <option key={o} value={o}>{tzLabel(o)}</option>)}
+            </select>
+          </label>
+        </>} />
       </header>
 
       {/* Kept mounted while hidden so criteria + results survive view switches (§6.10); key bump = 重置. */}
@@ -211,6 +229,7 @@ export default function App() {
                 onPrevDay={() => shiftDay(-1)}
                 onNextDay={() => shiftDay(1)}
                 onClose={() => setUi((s) => ({ ...s, sel: null }))}
+                onNow={goToday}
                 activity={ui.activity}
                 onSelectActivity={(a) => setUi((s) => ({ ...s, activity: a }))}
               />
@@ -224,5 +243,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </SettingsContext>
   );
 }

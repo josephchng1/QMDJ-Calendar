@@ -1,7 +1,7 @@
 # Build spec — 设置 panel, 此刻 button, 时干 box, 迫/墓/刑 markers, 农历/干支 day cells, 五行 colour mode
 
 **Requested by Joe 2026-11-10. Spec written by Fable 5.2; to be built by Opus.**
-Status: not built. Everything here is presentation only. **Do not change the engine,
+Status: **built 2026-11-10** (branch `settings-markers`). Everything here is presentation only. **Do not change the engine,
 scoring, bands, calibration, or any URL parameter.**
 
 Covers architecture items §10.5, §10.6 (markers only), §6.5 (lunar / 干支), §10.2,

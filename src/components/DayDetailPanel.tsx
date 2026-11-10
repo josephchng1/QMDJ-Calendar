@@ -20,7 +20,7 @@ type Tab = 'hours' | 'chart';
  *  direction counts; the 奇门盘 tab shows the hour's board WITH per-palace
  *  score-band shading + a corner score (§6.6). */
 export function DayDetailPanel({
-  date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose, activity, onSelectActivity,
+  date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose, onNow, activity, onSelectActivity,
 }: {
   date: { y: number; m: number; d: number };
   hours: DirHour[];
@@ -29,6 +29,7 @@ export function DayDetailPanel({
   onPrevDay: () => void;
   onNextDay: () => void;
   onClose: () => void;
+  onNow: () => void;
   activity: ApplicationTag | null;
   onSelectActivity: (a: ApplicationTag | null) => void;
 }) {
@@ -36,6 +37,8 @@ export function DayDetailPanel({
   const curIndex = Math.min(selectedHour ?? 0, hours.length - 1);
   const cur = hours[curIndex] ?? hours[0];
   const chart = cur.chart;
+  // 时干 to box on the board; 甲 hides under its 旬首 仪 (§10.5).
+  const hourStem = chart.pillars.hour.name[0] === '甲' ? chart.board.xunShouYi : chart.pillars.hour.name[0];
   const summary = cur.summary;
 
   // best hour (most 大吉 by score, then 吉), skipping 五不遇时 — for row highlight only.
@@ -68,10 +71,11 @@ export function DayDetailPanel({
 
   return (
     <div className="panel gold-frame p-4 flex flex-col gap-3" style={{ minHeight: 420 }}>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onPrevDay} title="前一天">‹ 日</button>
         <h2 className="text-base font-semibold">{date.y}年{date.m}月{date.d}日</h2>
         <button className="seg rounded-lg px-2.5 py-1 text-sm" onClick={onNextDay} title="后一天">日 ›</button>
+        <button className="seg rounded-lg px-2.5 py-1 text-xs" onClick={onNow} title="回到今天 · 当前时辰">此刻</button>
         <select
           className="seg rounded-lg px-2 py-1 text-xs ml-auto"
           value={activity ?? ''}
@@ -134,7 +138,7 @@ export function DayDetailPanel({
           </div>
 
           <FourPillarsBar chart={chart} />
-          <PalaceGrid board={chart.board} scores={summary.palaces} />
+          <PalaceGrid board={chart.board} scores={summary.palaces} hourStem={hourStem} />
         </div>
       )}
     </div>

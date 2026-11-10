@@ -197,7 +197,7 @@ App
 │   └── PalaceDetailPopup
 ├── SearchPage → FilterBuilder, ResultsList (ranked), ExportIcs
 ├── ReferencePage                    ← rendered from the data registry (§5)
-└── SettingsPage                     ← writes EngineOptions to localStorage
+└── SettingsPanel (设置 popover)      ← 排盘 options (URL) + display options (localStorage) — built 2026-11-10
 ```
 
 **Two UI decisions locked in 2026-07-24 (Joe):** the calendar day cell no longer
@@ -207,7 +207,7 @@ of the day panel (§6.6).
 
 ### 6.2 State & Data Flow
 
-- **Engine settings** (method, 晚子时, board type, display prefs): React context, persisted to `localStorage`. Changing a setting invalidates the worker's memo cache in one message.
+- **Display settings** (迫/墓/刑 marks, 神/门/星 colour mode, 农历 and 日干支 lines): React context (`src/settings.ts`), persisted to `localStorage['qmdj.display.v1']` only — never in the URL. **Chart options** (置闰/拆补, 神·变体, 晚子时, 时区) stay in the URL params (`mtd`/`sv`/`lz`/`tz`). Changing a setting invalidates the worker's memo cache in one message.
 - **Navigation state** (selected month / day / hour, active filters): **URL search params**. This makes every chart deep-linkable and shareable — e.g. `?d=2026-08-14&h=chen&m=chaibu` — which later becomes your "share this auspicious slot with a client" feature for free.
 - **Data hooks** (`useMonthSummary`, `useDaySummary`, `useChart`, `useSearch`): async calls into the Web Worker via a typed message bridge (or Comlink). Same TypeScript types as the tRPC router, so switching a hook between worker and server is a one-line change.
 - **Hour paging (← →)** pre-computes the adjacent two hours in the worker so navigation feels instantaneous.
@@ -232,7 +232,7 @@ the v2 per-palace model that roll-up is not a meaningful single quality — so i
 is removed from the calendar rather than shown misleadingly.
 
 The month cell keeps only **navigation/date information**: Gregorian date, lunar
-date, the 干支 toggle, and (optionally) formation badges. No 12-segment quality
+date, the 干支 toggle, and (optionally) formation badges. **Built 2026-11-10:** the 农历 line and the 日干支 line are each behind their own 设置 switch (`qmdj-settings-markers-spec.md` S6). No 12-segment quality
 bar, no day-band underline, no heat-map tint. The calendar is a *date picker*,
 not a quality map; quality lives one level down, per hour and per palace (§6.6).
 
@@ -315,7 +315,7 @@ corners carry existing symbols: **score** (top-left), **符/使/空/马** (top-r
 second reference: grey 天盘 top-left, 神 · 五 · 地盘 along the bottom.
 
 **(c) Gold hour-pillar removed** from the 奇门盘 view (already in `FourPillarsBar`);
-the gold box on the 时干 (old §10.5) is dropped too.
+the gold box on the 时干 (old §10.5) was dropped too. **Restored 2026-11-10** as a neutral outline (`--text`, not gold) on 天盘 and 地盘 — `qmdj-settings-markers-spec.md` S4.
 
 **⚠️ Not implemented — glyphs not yet computed** (as §10.6 warned): the small grey
 stem in the top-left corner and the bottom-left 八神-rotation label in the
@@ -422,9 +422,9 @@ Six feature updates from Joe, captured here as the working spec. Reference for
 2026-07-08 酉时, 阴遁八局[9置闰], 值符 甲寅癸·天冲落中五宫, 值使 伤门落中五宫).
 Ordered as given; not yet implemented.
 
-**2026-11-10 — build spec written, not built:** §10.2, §10.5, the §10.6 markers, the
-§6.5 lunar / 干支 lines, plus a 此刻 button and a 设置 panel are specified in
-`qmdj-settings-markers-spec.md`. Where that file and this section differ, that file wins.
+**2026-11-10 — built:** §10.2, §10.5, the §10.6 markers, the §6.5 lunar / 干支 lines,
+plus a 此刻 button and a 设置 panel, per `qmdj-settings-markers-spec.md`. Where that
+file and this section differ, that file wins.
 
 ### 10.1 Date search — three modes (extends §4.1 `searchRange`, §6.3)
 Search a date/time range and surface good slots by any of:
@@ -435,7 +435,8 @@ Search a date/time range and surface good slots by any of:
 Modes 2–3 depend on the §5 declarative 格局 registry (which formation list to
 offer). Mode 1 works against today's provisional score already.
 
-### 10.2 Symbol colour modes for 神 / 门 / 星 (extends §6.1, §9 colour language)
+### 10.2 Symbol colour modes for 神 / 门 / 星 (extends §6.1, §9 colour language) — BUILT 2026-11-10
+Built as **one** switch for all three classes (设置 → 符号颜色), see `qmdj-settings-markers-spec.md` S7.
 Let the user switch how 八神 / 八门 / 九星 are coloured, choosing between:
 - **Auspiciousness** — quality bands (cyan/green/grey/amber/red). Current default.
 - **五行 (5-element)** — wood/fire/earth/metal/water. Tokens already exist
@@ -454,14 +455,16 @@ Add prev/next-day arrows at the top of the right-hand day panel (mirroring the
 reference app's ◀ ▶ header), advancing the selected day by ±1 while keeping the
 current 时辰 and active tab.
 
-### 10.5 Hour-stem box on 天盘 / 地盘 (new marker)
+### 10.5 Hour-stem box on 天盘 / 地盘 (new marker) — BUILT 2026-11-10
+See `qmdj-settings-markers-spec.md` S4 (neutral outline; 甲 hour boxes the 旬首 仪).
 Draw a box/outline around the **时干 (hour stem)** wherever it appears on the
 天盘 and on the 地盘 inside the palaces, marking the acting hour. In the
 reference the hour is 辛酉, and 辛 is boxed in both 中五宫 and 坎一宫. Engine
 already exposes hour ganzhi (`chart.pillars.hour`) and each palace's
 `tianPanStems` / `diPanStem`, so this is pure presentation.
 
-### 10.6 Palace-cell layout to match the reference (re-work §6.1 PalaceCell)
+### 10.6 Palace-cell layout to match the reference (re-work §6.1 PalaceCell) — MARKERS BUILT 2026-11-10
+迫 / 刑 / 墓 built per `qmdj-settings-markers-spec.md` S5; the two ambiguous glyphs below are still open.
 Re-arrange every 九宫 cell to the screenshot's positions. Slots seen per cell
 (巽四宫 example → grey 丙 · 太阴 · 休门 · 天蓬 丙 · 天 四 壬):
 

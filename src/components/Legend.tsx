@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { V2_BAND_LABEL, V2_BAND_COLOR } from '../calendar/bandsV2.ts';
 import type { Band } from '../calendar/palace.ts';
 import { QUALITY_VAR } from '../qmdata.ts';
+import { useSettings } from '../settings.ts';
 
 // Key to the chart's colour + marker vocabulary. Purely explanatory — mirrors the
 // quality tags in qmdata.ts so a reader can decode the palace cells at a glance.
@@ -22,6 +23,13 @@ const MARKERS: { label: string; color: string; t: string }[] = [
   { label: '马', color: 'var(--q-caution)', t: '马星' },
 ];
 
+// 迫 / 墓 / 刑 board marks (spec S5) — plain text, no border, shown only while 标记 is on.
+const BOARD_MARKS: { label: string; color: string; t: string }[] = [
+  { label: '迫', color: 'var(--q-caution)', t: '门迫' },
+  { label: '墓', color: 'var(--text-dim)', t: '入墓' },
+  { label: '刑', color: 'var(--q-bad)', t: '击刑' },
+];
+
 const ELEMENTS: { v: string; t: string }[] = [
   { v: 'var(--wood)', t: '木' },
   { v: 'var(--fire)', t: '火' },
@@ -31,6 +39,7 @@ const ELEMENTS: { v: string; t: string }[] = [
 ];
 
 export function Legend() {
+  const { settings } = useSettings();
   return (
     <div className="panel p-4 flex flex-col gap-3 text-xs">
       <Group label="方位">
@@ -42,14 +51,14 @@ export function Legend() {
         ))}
       </Group>
 
-      <Group label="符号">
+      {settings.symbolColor === 'luck' && <Group label="符号">
         {QUALITY.map((q) => (
           <span key={q.t} className="flex items-center gap-1.5">
             <span className="swatch" style={{ background: q.v }} />
             <span style={{ color: 'var(--text)' }}>{q.t}</span>
           </span>
         ))}
-      </Group>
+      </Group>}
 
       <Group label="标记">
         {MARKERS.map((m) => (
@@ -59,6 +68,16 @@ export function Legend() {
             <span style={{ color: 'var(--text-dim)' }}>{m.t}</span>
           </span>
         ))}
+        {settings.showMarks && BOARD_MARKS.map((m) => (
+          <span key={m.label} className="flex items-center gap-1.5">
+            <span className="text-[10px] leading-none" style={{ color: m.color }}>{m.label}</span>
+            <span style={{ color: 'var(--text-dim)' }}>{m.t}</span>
+          </span>
+        ))}
+        <span className="flex items-center gap-1.5">
+          <span className="text-[10px] leading-none" style={{ outline: '1px solid var(--text)', outlineOffset: 1, borderRadius: 2, color: 'var(--text)' }}>干</span>
+          <span style={{ color: 'var(--text-dim)' }}>时干</span>
+        </span>
       </Group>
 
       <Group label="五行">
