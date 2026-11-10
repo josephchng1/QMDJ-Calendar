@@ -7,6 +7,7 @@ import { ALL_PATTERNS } from '../calendar/data/patterns.ts';
 import { shichenWindow } from '../calendar/bands.ts';
 import { V2_BAND_COLOR, V2_BAND_LABEL, SCORE_PRIME } from '../calendar/bandsV2.ts';
 import { DIRECTION_LABEL } from '../calendar/direction.ts';
+import { GradeChips } from './PalaceReasons.tsx';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -180,18 +181,12 @@ function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onCl
       </span>
       <span className="text-sm gold">{slot.hourGanzhi}</span>
       <span className="text-xs font-medium" style={{ color: c }}>
-        {slot.blocked ? '不用' : `${slot.direction ? DIRECTION_LABEL[slot.direction] + '方 ' : ''}${V2_BAND_LABEL[slot.band]} ${Math.round(slot.score)}`}
+        {`${slot.direction ? DIRECTION_LABEL[slot.direction] + '方 ' : ''}${slot.blocked ? '不用' : `${V2_BAND_LABEL[slot.band]} ${Math.round(slot.score)}`}`}
       </span>
       <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
-        {slot.formations.slice(0, 3).map((f) => {
-          const bad = f.tier.endsWith('inauspicious');   // 小凶 / 凶 / 大凶 → red (§6.10)
-          return (
-            <span key={f.id} className="text-[10px] px-1.5 py-0.5 rounded"
-                  style={bad ? { color: 'var(--q-bad)', border: '1px solid var(--border)' }
-                             : { color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>{f.name}</span>
-          );
-        })}
-        {slot.warnings.slice(0, 2).map((w) => (
+        {/* same 上格/下格 chips the board shows for this direction (palace) + the chart */}
+        <GradeChips grades={slot.grades} />
+        {slot.warnings.map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>
         ))}
