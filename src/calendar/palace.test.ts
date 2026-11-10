@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { STEMS } from '../engine/ganzhi.ts';
 import type { Palace, Board } from '../engine/board.ts';
 import type { Chart } from '../engine/index.ts';
-import { evaluatePalace, type ScoreProfile } from './palace.ts';
+import { evaluatePalace, evaluatePalaces, type ScoreProfile } from './palace.ts';
+import { buildChart } from '../engine/index.ts';
 import { emergencyDirections } from './direction.ts';
 import type { MatchedFormation } from './evaluator.ts';
 
@@ -102,5 +103,15 @@ describe('emergencyDirections', () => {
     const board = { palaces, zhiFuDisplayPalace: 7, xunShouYi: '己' } as unknown as Board;
     const chart = { board } as unknown as Chart;
     expect(emergencyDirections(chart).sort()).toEqual([3, 7]); // 地盘值符=己@3, 天盘值符=7
+  });
+});
+
+describe('六仪击刑 plate option (IMG_0068: 2026-07-08 酉时)', () => {
+  it('地盘 vetoes 巽4; 天盘 has no 击刑 anywhere on this board', () => {
+    const chart = buildChart({ y: 2026, m: 7, d: 8, hh: 18, mm: 0, tzHours: 8 });
+    const jx = (plate: 'di' | 'tian') => evaluatePalaces(chart, { kind: 'general', jiXingPlate: plate })
+      .filter((p) => p.warnings.includes('六仪击刑')).map((p) => p.palace);
+    expect(jx('di')).toContain(4);
+    expect(jx('tian')).toEqual([]);
   });
 });

@@ -65,8 +65,10 @@ export const LIU_YI_JI_XING: Record<string, number> = {
   壬: 4, // 甲辰壬 → 4巽 (辰自刑)
   癸: 4, // 甲寅癸 → 4巽 (寅刑巳)
 };
-export function isLiuYiJiXing(p: Palace): boolean {
-  return LIU_YI_JI_XING[p.diPanStem] === p.palace;
+export function isLiuYiJiXing(p: Palace, plate: 'di' | 'tian' = 'di'): boolean {
+  return plate === 'tian'
+    ? p.tianPanStems.some((s) => LIU_YI_JI_XING[s] === p.palace)
+    : LIU_YI_JI_XING[p.diPanStem] === p.palace;
 }
 
 // ─── §7.3 三奇入墓 — STRONG VETO (a 三奇 in its tomb palace; 乙 tombs in BOTH) ───

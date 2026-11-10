@@ -89,7 +89,10 @@ export function searchRange(q: SearchQuery): SearchResult {
   const opts = q.options ?? {};
   const hours = q.hours ?? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
   const preset = q.mode === 'recommended' && q.activity ? ACTIVITY_PRESETS[q.activity] : null;
-  const profile: ScoreProfile = preset ? { kind: 'purpose', activity: q.activity! } : { kind: 'general' };
+  const profile: ScoreProfile = {
+    ...(preset ? { kind: 'purpose', activity: q.activity! } : { kind: 'general' }),
+    jiXingPlate: opts.jiXingPlate,
+  };
   const want = (q.mode === 'by-formation' ? [q.formationId ?? ''] : q.mode === 'filter' ? q.filters?.require ?? [] : [])
     .filter((id) => PATTERNS_BY_ID[id]?.scope === 'palace');
 

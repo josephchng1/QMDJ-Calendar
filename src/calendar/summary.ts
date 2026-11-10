@@ -6,6 +6,8 @@ export interface CalendarOptions {
   spiritVariant?: boolean;
   lateZiNextDay?: boolean;
   tzHours?: number;
+  /** plate the 六仪击刑 veto reads: 地盘 (default, calibrated) or 天盘 (as the reference app marks it) */
+  jiXingPlate?: 'di' | 'tian';
 }
 
 /** Representative sample hour per 时辰 — the midpoint, to stay clear of the

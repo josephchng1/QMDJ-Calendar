@@ -21,6 +21,7 @@ interface UiState {
   hour: number | null;                              // selected 时辰 index 0..11; null = none chosen
   fx: string | null;                                // selected 格局 id (patterns view)
   method: Method; spiritVariant: boolean; lateZiNextDay: boolean;
+  jiXingPlate: 'di' | 'tian';                       // 六仪击刑 veto plate (URL jx=tian; default 地盘)
   tz: number;                                       // UTC offset (hours) charts and "now" are computed in
   activity: ApplicationTag | null;               // 用事 for purpose-mode direction grading
 }
@@ -63,6 +64,7 @@ function initialState(): UiState {
     method: p.get('mtd') === 'chaibu' ? 'chaibu' : 'zhirun',
     spiritVariant: p.get('sv') === '1',
     lateZiNextDay: p.get('lz') !== '0',
+    jiXingPlate: p.get('jx') === 'tian' ? 'tian' : 'di',
     tz,
     activity: (ACTIVITY_ORDER as string[]).includes(p.get('act') ?? '') ? (p.get('act') as ApplicationTag) : null,
   };
@@ -85,8 +87,8 @@ export default function App() {
   const today = useMemo(() => nowIn(ui.tz), [ui.tz]);
 
   const options: CalendarOptions = useMemo(() => ({
-    method: ui.method, spiritVariant: ui.spiritVariant, lateZiNextDay: ui.lateZiNextDay, tzHours: ui.tz,
-  }), [ui.method, ui.spiritVariant, ui.lateZiNextDay, ui.tz]);
+    method: ui.method, spiritVariant: ui.spiritVariant, lateZiNextDay: ui.lateZiNextDay, tzHours: ui.tz, jiXingPlate: ui.jiXingPlate,
+  }), [ui.method, ui.spiritVariant, ui.lateZiNextDay, ui.tz, ui.jiXingPlate]);
 
   // The selected day's 12 时辰 (per-palace boards) — feeds the day panel, computed
   // independently of the loaded month so ±1-day nav works across month boundaries.
@@ -106,6 +108,7 @@ export default function App() {
     if (ui.method === 'chaibu') p.set('mtd', 'chaibu');
     if (ui.spiritVariant) p.set('sv', '1');
     if (!ui.lateZiNextDay) p.set('lz', '0');
+    if (ui.jiXingPlate === 'tian') p.set('jx', 'tian');
     if (ui.activity) p.set('act', ui.activity);
     p.set('tz', String(ui.tz));
     history.replaceState(null, '', `?${p.toString()}`);
@@ -168,6 +171,15 @@ export default function App() {
         <SettingsPanel chart={<>
           <Check checked={ui.spiritVariant} onChange={(v) => setUi((s) => ({ ...s, spiritVariant: v }))}>神·变体（勾陈/朱雀）</Check>
           <Check checked={ui.lateZiNextDay} onChange={(v) => setUi((s) => ({ ...s, lateZiNextDay: v }))}>晚子时算次日</Check>
+          <div className="flex items-center gap-2" title="评分中「六仪击刑」否决看哪一盘的六仪">
+            <span>六仪击刑按：</span>
+            {(['di', 'tian'] as const).map((pl) => (
+              <button key={pl} className="seg rounded-lg px-2.5 py-1" data-active={ui.jiXingPlate === pl}
+                      aria-pressed={ui.jiXingPlate === pl} onClick={() => setUi((s) => ({ ...s, jiXingPlate: pl }))}>
+                {pl === 'di' ? '地盘' : '天盘'}
+              </button>
+            ))}
+          </div>
           <label className="flex items-center gap-2">时区
             <select className="seg rounded-lg px-2 py-1.5 text-xs" value={ui.tz} title="时区（盘与「今天」按此计算）"
                     onChange={(e) => setUi((s) => ({ ...s, tz: +e.target.value }))}

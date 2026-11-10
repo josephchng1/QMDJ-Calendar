@@ -294,6 +294,9 @@ one deliberate 乙-in-坤2 difference.
 ## S9. Flagged — not part of this build
 
 **A. Scoring reads 六仪击刑 off the 地盘; the reference app marks it on the 天盘.**
+**Resolved 2026-11-10 (Joe): made an option.** 设置 → 排盘 → 六仪击刑按 地盘 / 天盘
+(`CalendarOptions.jiXingPlate`, URL `jx=tian`; default 地盘, so calibration is unchanged).
+It changes scores, so it travels with the link like 神·变体. Original note:
 `isLiuYiJiXing` (`structural.ts:69`) tests `p.diPanStem`. The 地盘 is fixed for a whole
 局, so some palaces are vetoed for every hour of that 局 (阴3局: 坤2, 震3 and 离9 all at
 once). After this build the board can show a palace blocked for 六仪击刑 with no 刑

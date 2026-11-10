@@ -207,7 +207,7 @@ of the day panel (§6.6).
 
 ### 6.2 State & Data Flow
 
-- **Display settings** (迫/墓/刑 marks, 神/门/星 colour mode, 农历 and 日干支 lines): React context (`src/settings.ts`), persisted to `localStorage['qmdj.display.v1']` only — never in the URL. **Chart options** (置闰/拆补, 神·变体, 晚子时, 时区) stay in the URL params (`mtd`/`sv`/`lz`/`tz`). Changing a setting invalidates the worker's memo cache in one message.
+- **Display settings** (迫/墓/刑 marks, 神/门/星 colour mode, 农历 and 日干支 lines): React context (`src/settings.ts`), persisted to `localStorage['qmdj.display.v1']` only — never in the URL. **Chart options** (置闰/拆补, 神·变体, 晚子时, 时区, 六仪击刑 plate) stay in the URL params (`mtd`/`sv`/`lz`/`tz`/`jx`). Changing a setting invalidates the worker's memo cache in one message.
 - **Navigation state** (selected month / day / hour, active filters): **URL search params**. This makes every chart deep-linkable and shareable — e.g. `?d=2026-08-14&h=chen&m=chaibu` — which later becomes your "share this auspicious slot with a client" feature for free.
 - **Data hooks** (`useMonthSummary`, `useDaySummary`, `useChart`, `useSearch`): async calls into the Web Worker via a typed message bridge (or Comlink). Same TypeScript types as the tRPC router, so switching a hook between worker and server is a one-line change.
 - **Hour paging (← →)** pre-computes the adjacent two hours in the worker so navigation feels instantaneous.

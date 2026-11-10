@@ -70,6 +70,12 @@ describe('六仪击刑', () => {
   it('does not fire elsewhere', () => {
     expect(isLiuYiJiXing(palace({ palace: 4, diPanStem: '戊' }))).toBe(false);
   });
+  it('天盘 option reads the 天盘 stems instead (either of two)', () => {
+    const p = palace({ palace: 4, diPanStem: '戊', tianPanStems: ['丙', '壬'] });
+    expect(isLiuYiJiXing(p)).toBe(false);
+    expect(isLiuYiJiXing(p, 'tian')).toBe(true);
+    expect(isLiuYiJiXing(palace({ palace: 3, diPanStem: '戊', tianPanStems: ['丁'] }), 'tian')).toBe(false);
+  });
 });
 
 describe('三奇入墓', () => {
