@@ -12,7 +12,7 @@ import {
   isLiuYiJiXing, sanQiRuMu, isSanQiRuMu,
   isHourStemTomb, sanQiControlled,
   menGongRelation, isMenPo, isGongPo,
-  repetition, isTianXianShi,
+  repetition, isTianXianShi, stemMarks,
 } from './structural.ts';
 
 function palace(over: Partial<Palace> & { palace: number }): Palace {
@@ -69,6 +69,12 @@ describe('六仪击刑', () => {
   });
   it('does not fire elsewhere', () => {
     expect(isLiuYiJiXing(palace({ palace: 4, diPanStem: '戊' }))).toBe(false);
+  });
+  it('天盘 option reads the 天盘 stems instead (either of two)', () => {
+    const p = palace({ palace: 4, diPanStem: '戊', tianPanStems: ['丙', '壬'] });
+    expect(isLiuYiJiXing(p)).toBe(false);
+    expect(isLiuYiJiXing(p, 'tian')).toBe(true);
+    expect(isLiuYiJiXing(palace({ palace: 3, diPanStem: '戊', tianPanStems: ['丁'] }), 'tian')).toBe(false);
   });
 });
 
@@ -168,5 +174,17 @@ describe('天显时', () => {
   it('true only for a 甲-hour', () => {
     expect(isTianXianShi(chartWith('甲', []))).toBe(true);
     expect(isTianXianShi(chartWith('乙', []))).toBe(false);
+  });
+});
+
+describe('stemMarks (display only)', () => {
+  it.each([
+    ['壬', 4, '刑墓'], ['庚', 8, '刑墓'], ['己', 2, '刑'], ['戊', 3, '刑'], ['辛', 9, '刑'],
+    ['乙', 6, '墓'], ['癸', 2, '墓'], ['己', 8, '墓'], ['乙', 2, '墓'], ['丁', 6, ''], ['丙', 4, ''],
+  ])('%s@%i → %s', (s, p, want) => expect(stemMarks(s, p)).toBe(want));
+
+  it('isMenPo for the marker', () => {
+    for (const [g, p] of [['伤门', 2], ['开门', 3], ['死门', 1], ['景门', 6], ['惊门', 4]] as const) expect(isMenPo(g, p)).toBe(true);
+    for (const [g, p] of [['杜门', 7], ['休门', 2], ['死门', 3], ['开门', 9]] as const) expect(isMenPo(g, p)).toBe(false);
   });
 });

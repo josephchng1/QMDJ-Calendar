@@ -40,9 +40,10 @@ export type Rung = '奇门相会' | '得门不得奇' | '逢吉格' | '得奇不
 /** A labelled formation: only the extremes (上格 / 下格) ever get one (§2b). */
 export interface GradedFormation { text: string; grade: Grade }
 
-export type ScoreProfile =
+export type ScoreProfile = (
   | { kind: 'general' }
-  | { kind: 'purpose'; activity: ApplicationTag; role?: 'mover' | 'host'; highStakes?: boolean };
+  | { kind: 'purpose'; activity: ApplicationTag; role?: 'mover' | 'host'; highStakes?: boolean }
+) & { jiXingPlate?: 'di' | 'tian' };   // 六仪击刑 read off 地盘 (default) or 天盘
 
 export interface PalaceScore {
   palace: number;
@@ -251,7 +252,7 @@ function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number
 }
 
 // ─── build a PalaceScore for one outer palace ─────────────────────────────────
-function buildEval(chart: Chart, p: Palace, matched: MatchedFormation[]): PalaceEval {
+function buildEval(chart: Chart, p: Palace, matched: MatchedFormation[], profile: ScoreProfile): PalaceEval {
   const season = seasonElement(chart.pillars.month.branch);
   const hourStem = STEMS[chart.pillars.hour.stem];
   const stems: Record<string, GateVitality> = {};
@@ -265,7 +266,7 @@ function buildEval(chart: Chart, p: Palace, matched: MatchedFormation[]): Palace
     menGong: p.gate ? menGongRelation(p.gate, p.palace) : null,
     kongWang: p.isHourKong,
     ruMu: isSanQiRuMu(p),
-    jiXing: isLiuYiJiXing(p),
+    jiXing: isLiuYiJiXing(p, profile.jiXingPlate),
     shiGanRuMu: isHourStemTomb(chart) && palaceOfTianStem(chart.board, hourStem) === p.palace,
     xing: matched.some((m) => m.id === 'geng-xing-ge'),
     hardGe: matched.some((m) => HARD_GE_IDS.has(m.id)),
@@ -311,7 +312,7 @@ export function evaluatePalace(
       strength: { gate: null, star: null, spirit: null, stems: {} },
     };
   }
-  const ev = buildEval(chart, p, matched);
+  const ev = buildEval(chart, p, matched, profile);
   const wuBuYuShi = isWuBuYuShi(STEMS[chart.pillars.day.stem], STEMS[chart.pillars.hour.stem]);
   const goodGates: readonly Door[] = profile.kind === 'purpose'
     ? ACTIVITY_PRESETS[profile.activity].goodGates : GOOD_GATES;

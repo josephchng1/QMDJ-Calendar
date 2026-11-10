@@ -11,10 +11,11 @@ const ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
 // is supplied, each cell is tinted by its SCORE band + shows a corner score, and
 // clicking a palace reveals its rule-ladder reasons (§6.6).
 export function PalaceGrid({
-  board, scores,
+  board, scores, hourStem,
 }: {
   board: Board;
   scores?: PalaceScore[];
+  hourStem?: string;
 }) {
   const [focus, setFocus] = useState<number | null>(null);
   const focusPs = focus != null && scores ? scores[focus - 1] : null;
@@ -31,6 +32,7 @@ export function PalaceGrid({
                 key={p}
                 palace={board.palaces[p - 1]}
                 score={score}
+                hourStem={hourStem}
                 focused={focus === p}
                 onClick={clickable ? () => setFocus(focus === p ? null : p) : undefined}
               />

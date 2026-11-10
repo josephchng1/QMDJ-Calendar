@@ -31,9 +31,10 @@ ctx.onmessage = (e: MessageEvent<WorkerRequest>) => {
       case 'daydir': {
         // 12 时辰 of a day, each with the v2 per-palace HourSummary + its raw chart
         // (the board needs the chart's glyphs; the summary carries bands/reasons).
-        const profile: ScoreProfile = req.activity
-          ? { kind: 'purpose', activity: req.activity }
-          : { kind: 'general' };
+        const profile: ScoreProfile = {
+          ...(req.activity ? { kind: 'purpose', activity: req.activity } : { kind: 'general' }),
+          jiXingPlate: req.opts.jiXingPlate,
+        };
         const dayDir = HOUR_SAMPLE.map((hh) => {
           const chart = buildChart({ y: req.y, m: req.m, d: req.d, hh, mm: 0, ...req.opts });
           return { chart, summary: computeHourSummary(chart, profile) };

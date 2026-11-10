@@ -8,6 +8,8 @@ import { useDayDirections } from './hooks/useDayDirections.ts';
 import { Legend } from './components/Legend.tsx';
 import { ACTIVITY_ORDER } from './calendar/data/presets.ts';
 import type { ApplicationTag } from './calendar/data/patterns.ts';
+import { SettingsContext, parseSettings, SETTINGS_KEY, type DisplaySettings } from './settings.ts';
+import { SettingsPanel, Check, SETTINGS_PANEL_ID } from './components/SettingsPanel.tsx';
 
 type Method = 'zhirun' | 'chaibu';
 type View = 'calendar' | 'patterns' | 'search';
@@ -19,6 +21,7 @@ interface UiState {
   hour: number | null;                              // selected 时辰 index 0..11; null = none chosen
   fx: string | null;                                // selected 格局 id (patterns view)
   method: Method; spiritVariant: boolean; lateZiNextDay: boolean;
+  jiXingPlate: 'di' | 'tian';                       // 六仪击刑 veto plate (URL jx=tian; default 地盘)
   tz: number;                                       // UTC offset (hours) charts and "now" are computed in
   activity: ApplicationTag | null;               // 用事 for purpose-mode direction grading
 }
@@ -61,6 +64,7 @@ function initialState(): UiState {
     method: p.get('mtd') === 'chaibu' ? 'chaibu' : 'zhirun',
     spiritVariant: p.get('sv') === '1',
     lateZiNextDay: p.get('lz') !== '0',
+    jiXingPlate: p.get('jx') === 'tian' ? 'tian' : 'di',
     tz,
     activity: (ACTIVITY_ORDER as string[]).includes(p.get('act') ?? '') ? (p.get('act') as ApplicationTag) : null,
   };
@@ -70,11 +74,21 @@ export default function App() {
   const [ui, setUi] = useState<UiState>(initialState);
   const [copied, setCopied] = useState(false);
   const [searchKey, setSearchKey] = useState(0);
+  // Display preferences: localStorage only (storage may throw in private windows).
+  const [settings, setSettings] = useState<DisplaySettings>(() => {
+    try { return parseSettings(localStorage.getItem(SETTINGS_KEY)); } catch { return parseSettings(null); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* defaults next visit */ }
+  }, [settings]);
+  const settingsCtx = useMemo(() => ({
+    settings, set: (patch: Partial<DisplaySettings>) => setSettings((s) => ({ ...s, ...patch })),
+  }), [settings]);
   const today = useMemo(() => nowIn(ui.tz), [ui.tz]);
 
   const options: CalendarOptions = useMemo(() => ({
-    method: ui.method, spiritVariant: ui.spiritVariant, lateZiNextDay: ui.lateZiNextDay, tzHours: ui.tz,
-  }), [ui.method, ui.spiritVariant, ui.lateZiNextDay, ui.tz]);
+    method: ui.method, spiritVariant: ui.spiritVariant, lateZiNextDay: ui.lateZiNextDay, tzHours: ui.tz, jiXingPlate: ui.jiXingPlate,
+  }), [ui.method, ui.spiritVariant, ui.lateZiNextDay, ui.tz, ui.jiXingPlate]);
 
   // The selected day's 12 时辰 (per-palace boards) — feeds the day panel, computed
   // independently of the loaded month so ±1-day nav works across month boundaries.
@@ -94,6 +108,7 @@ export default function App() {
     if (ui.method === 'chaibu') p.set('mtd', 'chaibu');
     if (ui.spiritVariant) p.set('sv', '1');
     if (!ui.lateZiNextDay) p.set('lz', '0');
+    if (ui.jiXingPlate === 'tian') p.set('jx', 'tian');
     if (ui.activity) p.set('act', ui.activity);
     p.set('tz', String(ui.tz));
     history.replaceState(null, '', `?${p.toString()}`);
@@ -130,6 +145,7 @@ export default function App() {
   );
 
   return (
+    <SettingsContext value={settingsCtx}>
     <div className="min-h-full max-w-6xl mx-auto px-4 py-6">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-2 mb-5">
         <h1 className="text-xl font-semibold gold tracking-widest">奇門遁甲 · 择日历</h1>
@@ -147,18 +163,32 @@ export default function App() {
             <>
               <Toggle active={ui.method === 'zhirun'} onClick={() => setUi((s) => ({ ...s, method: 'zhirun' }))}>置闰</Toggle>
               <Toggle active={ui.method === 'chaibu'} onClick={() => setUi((s) => ({ ...s, method: 'chaibu' }))}>拆补</Toggle>
-              <Toggle active={ui.spiritVariant} onClick={() => setUi((s) => ({ ...s, spiritVariant: !s.spiritVariant }))}>神·变体</Toggle>
-              <Toggle active={ui.lateZiNextDay} onClick={() => setUi((s) => ({ ...s, lateZiNextDay: !s.lateZiNextDay }))}>晚子时次日</Toggle>
             </>
           )}
-          <select className="seg rounded-lg px-2 py-1.5 text-xs" value={ui.tz} title="时区（盘与「今天」按此计算）"
-                  onChange={(e) => setUi((s) => ({ ...s, tz: +e.target.value }))}
-                  style={{ background: 'var(--bg-cell-2)', color: 'var(--text)' }}>
-            {(TZ_OFFSETS.includes(ui.tz) ? TZ_OFFSETS : [...TZ_OFFSETS, ui.tz].sort((a, b) => a - b))
-              .map((o) => <option key={o} value={o}>{tzLabel(o)}</option>)}
-          </select>
+          <button className="seg rounded-lg px-3 py-1.5 text-xs" popoverTarget={SETTINGS_PANEL_ID}>设置</button>
           <button className="seg rounded-lg px-3 py-1.5 text-xs" onClick={share}>{copied ? '已复制 ✓' : '复制链接'}</button>
         </div>
+        <SettingsPanel chart={<>
+          <Check checked={ui.spiritVariant} onChange={(v) => setUi((s) => ({ ...s, spiritVariant: v }))}>神·变体（勾陈/朱雀）</Check>
+          <Check checked={ui.lateZiNextDay} onChange={(v) => setUi((s) => ({ ...s, lateZiNextDay: v }))}>晚子时算次日</Check>
+          <div className="flex items-center gap-2" title="评分中「六仪击刑」否决看哪一盘的六仪">
+            <span>六仪击刑按：</span>
+            {(['di', 'tian'] as const).map((pl) => (
+              <button key={pl} className="seg rounded-lg px-2.5 py-1" data-active={ui.jiXingPlate === pl}
+                      aria-pressed={ui.jiXingPlate === pl} onClick={() => setUi((s) => ({ ...s, jiXingPlate: pl }))}>
+                {pl === 'di' ? '地盘' : '天盘'}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2">时区
+            <select className="seg rounded-lg px-2 py-1.5 text-xs" value={ui.tz} title="时区（盘与「今天」按此计算）"
+                    onChange={(e) => setUi((s) => ({ ...s, tz: +e.target.value }))}
+                    style={{ background: 'var(--bg-cell-2)', color: 'var(--text)' }}>
+              {(TZ_OFFSETS.includes(ui.tz) ? TZ_OFFSETS : [...TZ_OFFSETS, ui.tz].sort((a, b) => a - b))
+                .map((o) => <option key={o} value={o}>{tzLabel(o)}</option>)}
+            </select>
+          </label>
+        </>} />
       </header>
 
       {/* Kept mounted while hidden so criteria + results survive view switches (§6.10); key bump = 重置. */}
@@ -211,6 +241,7 @@ export default function App() {
                 onPrevDay={() => shiftDay(-1)}
                 onNextDay={() => shiftDay(1)}
                 onClose={() => setUi((s) => ({ ...s, sel: null }))}
+                onNow={goToday}
                 activity={ui.activity}
                 onSelectActivity={(a) => setUi((s) => ({ ...s, activity: a }))}
               />
@@ -224,5 +255,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </SettingsContext>
   );
 }

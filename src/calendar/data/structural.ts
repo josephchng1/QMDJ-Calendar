@@ -65,8 +65,10 @@ export const LIU_YI_JI_XING: Record<string, number> = {
   壬: 4, // 甲辰壬 → 4巽 (辰自刑)
   癸: 4, // 甲寅癸 → 4巽 (寅刑巳)
 };
-export function isLiuYiJiXing(p: Palace): boolean {
-  return LIU_YI_JI_XING[p.diPanStem] === p.palace;
+export function isLiuYiJiXing(p: Palace, plate: 'di' | 'tian' = 'di'): boolean {
+  return plate === 'tian'
+    ? p.tianPanStems.some((s) => LIU_YI_JI_XING[s] === p.palace)
+    : LIU_YI_JI_XING[p.diPanStem] === p.palace;
 }
 
 // ─── §7.3 三奇入墓 — STRONG VETO (a 三奇 in its tomb palace; 乙 tombs in BOTH) ───
@@ -81,6 +83,10 @@ export const isSanQiRuMu = (p: Palace): boolean => sanQiRuMu(p).length > 0;
 export const STEM_TOMB: Record<string, number> = {
   甲: 2, 乙: 6, 丙: 6, 丁: 8, 戊: 6, 己: 8, 庚: 8, 辛: 4, 壬: 4, 癸: 2,
 };
+/** Display marks for one 天盘 stem, as drawn on the board. Not a scoring predicate. */
+export const stemMarks = (stem: string, palace: number): string =>
+  (LIU_YI_JI_XING[stem] === palace ? '刑' : '') +
+  (STEM_TOMB[stem] === palace || SANQI_RUMU[stem]?.includes(palace) ? '墓' : '');
 /** palace where a stem sits on the 天盘 (first match), or null. */
 export function palaceOfTianStem(board: Board, stem: string): number | null {
   for (const p of board.palaces) if (p.tianPanStems.includes(stem)) return p.palace;

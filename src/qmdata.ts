@@ -53,9 +53,16 @@ export const QUALITY_VAR: Record<Quality, string> = {
 
 export const stemColor = (s: string) =>
   s && STEM_ELEMENT[s] ? ELEMENT_VAR[STEM_ELEMENT[s]] : 'var(--text)';
-export const gateColor = (g: string | null) =>
-  g && GATE_META[g] ? QUALITY_VAR[GATE_META[g].quality] : 'var(--text-dim)';
-export const starColor = (s: string) =>
-  s && STAR_META[s] ? QUALITY_VAR[STAR_META[s].quality] : 'var(--text-dim)';
-export const spiritColor = (s: string | null) =>
-  s && SPIRIT_QUALITY[s] ? QUALITY_VAR[SPIRIT_QUALITY[s]] : 'var(--text-dim)';
+export const SPIRIT_ELEMENT: Record<string, Element> = {
+  值符: 'wood', 腾蛇: 'fire', 太阴: 'metal', 六合: 'wood', 白虎: 'metal',
+  玄武: 'water', 九地: 'earth', 九天: 'metal', 勾陈: 'earth', 朱雀: 'fire',
+};
+
+/** 神/门/星 colour: by 吉凶 (default) or by 五行 (spec S7). */
+export type SymbolColorMode = 'luck' | 'element';
+export const gateColor = (g: string | null, mode: SymbolColorMode = 'luck') =>
+  g && GATE_META[g] ? (mode === 'element' ? ELEMENT_VAR[GATE_META[g].element] : QUALITY_VAR[GATE_META[g].quality]) : 'var(--text-dim)';
+export const starColor = (s: string, mode: SymbolColorMode = 'luck') =>
+  s && STAR_META[s] ? (mode === 'element' ? ELEMENT_VAR[STAR_META[s].element] : QUALITY_VAR[STAR_META[s].quality]) : 'var(--text-dim)';
+export const spiritColor = (s: string | null, mode: SymbolColorMode = 'luck') =>
+  s && SPIRIT_QUALITY[s] ? (mode === 'element' ? ELEMENT_VAR[SPIRIT_ELEMENT[s]] : QUALITY_VAR[SPIRIT_QUALITY[s]]) : 'var(--text-dim)';

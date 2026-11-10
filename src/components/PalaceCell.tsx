@@ -2,6 +2,31 @@ import type { Palace } from '../types.ts';
 import type { PalaceScore } from '../calendar/palace.ts';
 import { gateColor, starColor, spiritColor, stemColor } from '../qmdata.ts';
 import { V2_BAND_COLOR, scoreBand, bandTint } from '../calendar/bandsV2.ts';
+import { stemMarks, isMenPo } from '../calendar/data/structural.ts';
+import { useSettings } from '../settings.ts';
+
+const MARK_STYLE: Record<string, { color: string; title: string }> = {
+  刑: { color: 'var(--q-bad)', title: '六仪击刑（天盘）' },
+  墓: { color: 'var(--text-dim)', title: '天盘干入墓' },
+};
+
+/** One stem: 五行 colour + optional 时干 box + optional 刑/墓 marks (stacked, left of it). */
+function Stem({ s, boxed, marks = '', className = 'text-lg font-semibold' }: { s: string | null; boxed: boolean; marks?: string; className?: string }) {
+  return (
+    <span className="inline-flex items-center gap-px">
+      {marks && (
+        <span className="flex flex-col text-[9px] leading-none">
+          {[...marks].map((m) => <span key={m} style={{ color: MARK_STYLE[m].color }} title={MARK_STYLE[m].title}>{m}</span>)}
+        </span>
+      )}
+      <span className={className} style={{
+        color: stemColor(s ?? ''),
+        // neutral outline: gold / red already mean 大吉 / 凶 (§6.7)
+        ...(boxed ? { outline: '1px solid var(--text)', outlineOffset: 1, borderRadius: 2 } : {}),
+      }}>{s ?? ''}</span>
+    </span>
+  );
+}
 
 // Palace-number glyph (洛書).
 const NUM: Record<number, string> = {
@@ -16,14 +41,17 @@ const NUM: Record<number, string> = {
 //   • colour of the tint + score follows the SCORE (§6.6); formations are NOT
 //     drawn in the box yet (pending Joe).
 export function PalaceCell({
-  palace, score, focused, onClick,
+  palace, score, focused, onClick, hourStem,
 }: {
   palace: Palace;
   score?: PalaceScore;
+  hourStem?: string;
   focused?: boolean;
   onClick?: () => void;
 }) {
   const isCentre = palace.palace === 5;
+  const { settings: { showMarks, symbolColor } } = useSettings();
+  const boxed = (st: string | null) => !!st && st === hourStem;
 
   const markers: { label: string; color: string }[] = [];
   if (palace.isZhiFu) markers.push({ label: '符', color: 'var(--gold)' });
@@ -41,13 +69,11 @@ export function PalaceCell({
         </div>
         <div className="flex-1" />
         <div className="flex items-end justify-between">
-          <span className="text-base font-medium" style={{ color: spiritColor(palace.spirit) }}>
+          <span className="text-base font-medium" style={{ color: spiritColor(palace.spirit, symbolColor) }}>
             {palace.spirit ?? ''}
           </span>
           <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{NUM[5]}</span>
-          <span className="text-lg font-semibold" style={{ color: stemColor(palace.diPanStem) }}>
-            {palace.diPanStem ?? ''}
-          </span>
+          <Stem s={palace.diPanStem} boxed={boxed(palace.diPanStem)} />
         </div>
       </div>
     );
@@ -91,13 +117,17 @@ export function PalaceCell({
 
       {/* centre: 神 / 门 / 星 — large, same size as 天盘 */}
       <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1">
-        <div className="text-lg leading-tight" style={{ color: spiritColor(palace.spirit) }}>
+        <div className="text-lg leading-tight" style={{ color: spiritColor(palace.spirit, symbolColor) }}>
           {palace.spirit ?? ''}
         </div>
-        <div className="text-lg font-semibold leading-tight" style={{ color: gateColor(palace.gate) }}>
+        <div className="text-lg font-semibold leading-tight relative" style={{ color: gateColor(palace.gate, symbolColor) }}>
+          {showMarks && palace.gate && isMenPo(palace.gate, palace.palace) && (
+            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-px text-[9px] leading-none font-normal"
+                  style={{ color: 'var(--q-caution)' }} title="门迫（门克宫）">迫</span>
+          )}
           {palace.gate ?? ''}
         </div>
-        <div className="text-lg leading-tight flex gap-0.5" style={{ color: starColor(palace.stars[0] ?? '') }}>
+        <div className="text-lg leading-tight flex gap-0.5" style={{ color: starColor(palace.stars[0] ?? '', symbolColor) }}>
           {palace.stars.map((s) => <span key={s}>{s}</span>)}
         </div>
       </div>
@@ -106,14 +136,12 @@ export function PalaceCell({
       <div className="flex items-end justify-between leading-none">
         <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{NUM[palace.palace]}</span>
         <div className="flex flex-col items-end leading-tight">
-          <div className="flex gap-0.5 text-lg font-semibold">
+          <div className="flex gap-0.5">
             {palace.tianPanStems.map((s, i) => (
-              <span key={i} style={{ color: stemColor(s) }}>{s}</span>
+              <Stem key={i} s={s} boxed={boxed(s)} marks={showMarks ? stemMarks(s, palace.palace) : ''} />
             ))}
           </div>
-          <div className="text-lg font-semibold" style={{ color: stemColor(palace.diPanStem) }}>
-            {palace.diPanStem ?? ''}
-          </div>
+          <Stem s={palace.diPanStem} boxed={boxed(palace.diPanStem)} />
         </div>
       </div>
     </div>
