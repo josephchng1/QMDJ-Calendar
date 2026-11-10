@@ -74,6 +74,7 @@ export default function App() {
   const [ui, setUi] = useState<UiState>(initialState);
   const [copied, setCopied] = useState(false);
   const [searchKey, setSearchKey] = useState(0);
+  const [openOnChart, setOpenOnChart] = useState(false);   // panel opened from a search hit
   // Display preferences: localStorage only (storage may throw in private windows).
   const [settings, setSettings] = useState<DisplaySettings>(() => {
     try { return parseSettings(localStorage.getItem(SETTINGS_KEY)); } catch { return parseSettings(null); }
@@ -119,11 +120,11 @@ export default function App() {
     return { ...s, year: dt.getFullYear(), month: dt.getMonth() + 1, sel: null };
   });
   // Today opens on the current 时辰 (read fresh, the page may have been open a while); any other day on none.
-  const selectDay = (day: { y: number; m: number; d: number }) => setUi((s) => {
+  const selectDay = (day: { y: number; m: number; d: number }) => { setOpenOnChart(false); setUi((s) => {
     const now = nowIn(s.tz);
     const isToday = now.y === day.y && now.m === day.m && now.d === day.d;
     return { ...s, sel: { y: day.y, m: day.m, d: day.d }, year: day.y, month: day.m, hour: isToday ? now.hour : null };
-  });
+  }); };
   const goToday = () => selectDay(nowIn(ui.tz));
 
   // ±1 day, following across month boundaries; keep the current 时辰 and tab.
@@ -197,8 +198,10 @@ export default function App() {
           key={searchKey}
           options={options}
           onReset={() => setSearchKey((k) => k + 1)}
-          onOpenSlot={(y, m, d, branchIndex, activity) =>
-            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, activity }))}
+          onOpenSlot={(y, m, d, branchIndex, activity) => {
+            setOpenOnChart(true);
+            setUi((s) => ({ ...s, view: 'calendar', sel: { y, m, d }, hour: branchIndex, year: y, month: m, activity }));
+          }}
         />
       </div>
 
@@ -244,6 +247,7 @@ export default function App() {
                 onNow={goToday}
                 activity={ui.activity}
                 onSelectActivity={(a) => setUi((s) => ({ ...s, activity: a }))}
+                initialTab={openOnChart ? 'chart' : 'hours'}
               />
               </div>
             ) : (

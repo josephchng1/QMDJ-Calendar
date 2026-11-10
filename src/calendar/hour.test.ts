@@ -13,6 +13,21 @@ describe('hourRoleFavour — 五阳时利客 / 五阴时利主', () => {
     expect(hourRoleFavour('己')).toBe('host');
     expect(hourRoleFavour('癸')).toBe('host');
   });
+  it('伏吟 → 主 and 反吟 → 客 outrank the hour stem (S0 p139)', () => {
+    expect(hourRoleFavour('甲', { fuYin: true, fanYin: false })).toBe('host');
+    expect(hourRoleFavour('癸', { fuYin: false, fanYin: true })).toBe('mover');
+  });
+  it('real 伏吟 hours never advise 客; very poor hours advise nothing', () => {
+    let fu = 0, poor = 0;
+    for (let d = 1; d <= 20; d++) for (const hh of HOUR_SAMPLE) {
+      const s = computeHourSummary(buildChart({ y: 2026, m: 3, d, hh, mm: 0 }));
+      if (s.chartWarnings.includes('伏吟')) { fu++; expect(s.hourRoleFavour).not.toBe('mover'); }
+      const shown = s.palaces.filter((p) => p.palace !== 5 && !p.blocked && p.score >= 16).length;
+      if (s.chartBlocked || !shown) { poor++; expect(s.hourRoleFavour).toBeNull(); }
+    }
+    expect(fu).toBeGreaterThan(0);
+    expect(poor).toBeGreaterThan(0);
+  });
 });
 
 describe('computeHourSummary — the hour is DESCRIBED, not scored', () => {
@@ -30,7 +45,7 @@ describe('computeHourSummary — the hour is DESCRIBED, not scored', () => {
     expect(hs).not.toHaveProperty('score');
     expect(typeof hs.counts.prime).toBe('number');
     expect(typeof hs.counts.good).toBe('number');
-    expect(['mover', 'host']).toContain(hs.hourRoleFavour);
+    expect(['mover', 'host', null]).toContain(hs.hourRoleFavour);
     expect(hs.emergencyDirections.length).toBeGreaterThanOrEqual(1);
     expect(hs.emergencyDirections).not.toContain(5);
   });

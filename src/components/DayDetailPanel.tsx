@@ -21,6 +21,7 @@ type Tab = 'hours' | 'chart';
  *  score-band shading + a corner score (§6.6). */
 export function DayDetailPanel({
   date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose, onNow, activity, onSelectActivity,
+  initialTab = 'hours',
 }: {
   date: { y: number; m: number; d: number };
   hours: DirHour[];
@@ -32,8 +33,9 @@ export function DayDetailPanel({
   onNow: () => void;
   activity: ApplicationTag | null;
   onSelectActivity: (a: ApplicationTag | null) => void;
+  initialTab?: Tab;   // read on mount only (a search hit opens straight on 奇门盘)
 }) {
-  const [tab, setTab] = useState<Tab>('hours');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const curIndex = Math.min(selectedHour ?? 0, hours.length - 1);
   const cur = hours[curIndex] ?? hours[0];
   const chart = cur.chart;
@@ -59,7 +61,7 @@ export function DayDetailPanel({
     else onSelectHour(next);
   };
 
-  const roleText = summary.hourRoleFavour === 'mover' ? '客 · 主动出击' : '主 · 按兵不动';
+  const roleText = summary.hourRoleFavour && (summary.hourRoleFavour === 'mover' ? '客 · 主动出击' : '主 · 按兵不动');
   const emergency = summary.emergencyDirections
     .map((p) => DIRECTION_LABEL[directionOf(p)!] ?? '')
     .filter(Boolean);
@@ -123,7 +125,7 @@ export function DayDetailPanel({
           {/* 主客 / 急则从神 / chart warnings — direction context for the graded board */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <GradeChips grades={summary.chartGrades} />
-            <Chip text={`宜为${roleText}`} color="var(--gold)" />
+            {roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
           </div>

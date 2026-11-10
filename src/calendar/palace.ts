@@ -75,6 +75,10 @@ const VALENCE: Record<Quality, number> = {
 const WONDER_VALENCE = 6;   // 三奇 intrinsic positive (no quality table for stems)
 const K_SHENG = 0.2, K_ZHI = 0.25, K_PO = 0.3;
 const VOID_PENALTY = 12, CONTROLLED_PENALTY = 20, BLOCKED_SCORE = -999;
+// 时干入墓: the hour's own stem (the matter acted on) is buried, so the whole hour is
+// dimmed, not just the tomb palace (blocked). Bigger than 空亡/受制: a plain 吉门 drops
+// to 不吉, only a 奇门相会 / 上格 direction stays usable.
+const HOUR_TOMB_PENALTY = 30;
 const WONDERS = ['乙', '丙', '丁'] as const;
 
 const TOP_TIER = new Set([
@@ -96,6 +100,7 @@ interface PalaceEval {
   ruMu: boolean;         // 三奇入墓
   jiXing: boolean;       // 六仪击刑
   shiGanRuMu: boolean;   // 时干入墓 landing in THIS palace
+  hourTomb: boolean;     // 时干入墓 anywhere this hour (hour-wide penalty)
   xing: boolean;         // 刑格
   hardGe: boolean;       // a HARD 庚-格 present
   primaryStar: Star | null;
@@ -241,6 +246,7 @@ function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number
   for (const f of ev.matched) s += formationContribution(f, p.gate); // NOT amplitude-scaled
   if (ev.kongWang) s -= VOID_PENALTY;
   if (isSanQiControlled(p)) s -= CONTROLLED_PENALTY;
+  if (ev.hourTomb) s -= HOUR_TOMB_PENALTY;
 
   // §4.2 step 9 — 用神 boost: reward palaces carrying this activity's 用神.
   if (pp) {
@@ -268,6 +274,7 @@ function buildEval(chart: Chart, p: Palace, matched: MatchedFormation[], profile
     ruMu: isSanQiRuMu(p),
     jiXing: isLiuYiJiXing(p, profile.jiXingPlate),
     shiGanRuMu: isHourStemTomb(chart) && palaceOfTianStem(chart.board, hourStem) === p.palace,
+    hourTomb: isHourStemTomb(chart),
     xing: matched.some((m) => m.id === 'geng-xing-ge'),
     hardGe: matched.some((m) => HARD_GE_IDS.has(m.id)),
     primaryStar,

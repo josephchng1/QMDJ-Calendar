@@ -18,9 +18,16 @@ import { matchChart } from './evaluator.ts';
 import { PATTERNS_BY_ID, gradeOf } from './data/patterns.ts';
 import { emergencyDirections, type Direction } from './direction.ts';
 import type { Chart } from '../engine/index.ts';
+import { scoreCounts } from './bandsV2.ts';
 
-/** 五阳时 (甲乙丙丁戊) 利客 · 五阴时 (己庚辛壬癸) 利主. (§4.4) */
-export function hourRoleFavour(hourStem: string): 'mover' | 'host' {
+/** 主客 for the hour (S0 p139, §4.4). The chart's 格 outranks the hour stem:
+ *  伏吟 → 主 (按兵不动，以逸待勞) · 反吟 → 客 (主動出擊); otherwise
+ *  五阳时 (甲乙丙丁戊) 利客 · 五阴时 (己庚辛壬癸) 利主. */
+export function hourRoleFavour(
+  hourStem: string, rep: { fuYin: boolean; fanYin: boolean } = { fuYin: false, fanYin: false },
+): 'mover' | 'host' {
+  if (rep.fuYin) return 'host';
+  if (rep.fanYin) return 'mover';
   return ['甲', '乙', '丙', '丁', '戊'].includes(hourStem) ? 'mover' : 'host';
 }
 
@@ -31,7 +38,8 @@ export interface HourSummary {
   /** chart-scope 上格/下格 labels (天显时格 · 值符伏吟) — palace ones live on PalaceScore */
   chartGrades: GradedFormation[];
   chartBlocked: boolean;         // 五不遇时 → every palace blocked; excluded from search
-  hourRoleFavour: 'mover' | 'host';
+  /** null on a very poor hour (五不遇时, or no 吉/大吉 direction) — nothing worth advising. */
+  hourRoleFavour: 'mover' | 'host' | null;
   emergencyDirections: number[];
 }
 
@@ -69,13 +77,17 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     else if (ps.band === 'good') good++;
   }
 
+  // counts as the hour row shows them (score band), so 无可用方位 ⇒ no 主客 advice
+  const shown = scoreCounts(palaces);
+  const veryPoor = chartBlocked || (!shown.prime && !shown.good);
+
   return {
     palaces,
     counts: { prime, good },
     chartWarnings,
     chartGrades,
     chartBlocked,
-    hourRoleFavour: hourRoleFavour(hourStem),
+    hourRoleFavour: veryPoor ? null : hourRoleFavour(hourStem, rep),
     emergencyDirections: emergencyDirections(chart),
   };
 }
