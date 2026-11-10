@@ -115,3 +115,14 @@ describe('六仪击刑 plate option (IMG_0068: 2026-07-08 酉时)', () => {
     expect(jx('tian')).toEqual([]);
   });
 });
+
+describe('时干入墓 — the whole hour is dimmed, the tomb palace blocked', () => {
+  it('every other palace scores 30 lower than the same cell in a clean hour', () => {
+    const open = pal({ palace: 1, gate: '开门' });
+    const tombed = [pal({ palace: 6, tianPanStems: ['丙'] }), open]; // 丙 in 乾6 = its 戌 tomb
+    const clean = [pal({ palace: 2, tianPanStems: ['丙'] }), open];
+    const score = (ps: Palace[]) => evaluatePalace(chartOf(8, '甲', '丙', ps), open, [], gen).score;
+    expect(score(clean) - score(tombed)).toBe(30);
+    expect(evaluatePalace(chartOf(8, '甲', '丙', tombed), tombed[0], [], gen).blocked).toBe(true);
+  });
+});

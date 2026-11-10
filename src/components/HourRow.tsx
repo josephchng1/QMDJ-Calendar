@@ -19,7 +19,7 @@ export function HourRow({
 }) {
   const blocked = summary.chartBlocked;
   const { prime, good } = scoreCounts(summary.palaces);
-  const role = summary.hourRoleFavour === 'mover' ? '客' : '主';
+  const role = summary.hourRoleFavour && (summary.hourRoleFavour === 'mover' ? '客' : '主');
 
   return (
     <button
@@ -51,9 +51,11 @@ export function HourRow({
       )}
 
       <div className="ml-auto flex items-center gap-1.5">
-        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>
-          ▸{role}
-        </span>
+        {role && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>
+            ▸{role}
+          </span>
+        )}
         {summary.chartWarnings.filter((w) => w !== '五不遇时').map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>
