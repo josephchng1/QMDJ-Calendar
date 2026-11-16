@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { version } from '../package.json';
 import type { CalendarOptions } from './calendar/summary.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
 import { DayDetailPanel } from './components/DayDetailPanel.tsx';
@@ -151,7 +152,10 @@ export default function App() {
     <SettingsContext value={settingsCtx}>
     <div className="min-h-full max-w-6xl mx-auto px-4 py-6">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-2 mb-5">
-        <h1 className="text-xl font-semibold gold tracking-widest">奇門遁甲 · 择日历</h1>
+        <div>
+          <h1 className="text-xl font-semibold gold tracking-widest">奇門遁甲 · 择日历</h1>
+          <div className="text-[10px] leading-none" style={{ color: 'var(--text-dim)' }}>v{version}</div>
+        </div>
         <span className="text-xs" style={{ color: 'var(--text-dim)' }}>Qimen Calendar · 时家转盘</span>
 
         {/* view switcher */}
