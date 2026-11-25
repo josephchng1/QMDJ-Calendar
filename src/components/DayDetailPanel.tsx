@@ -126,6 +126,7 @@ export function DayDetailPanel({
             <GradeChips grades={summary.chartGrades} />
             {roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
+            {summary.mustAct && <span title={summary.mustAct.gloss}><Chip text={`必须此时行事 · ${summary.mustAct.text}`} color="var(--q-caution)" /></span>}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
           </div>
 

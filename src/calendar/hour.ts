@@ -30,6 +30,27 @@ export function hourRoleFavour(
   return ['甲', '乙', '丙', '丁', '戊'].includes(hourStem) ? 'mover' : 'host';
 }
 
+/** "I must act at this hour" guidance for 伏吟 / 反吟 hours (spec §4). */
+export interface MustAct {
+  kind: '伏吟' | '反吟';
+  role: 'host' | 'mover';
+  text: string;    // 简体
+  gloss: string;   // short English
+  emergencyDirections: number[];   // 急则从神 (S0 p135)
+}
+// S0(p131, p139): 伏吟利主不利客，宜收敛财货、讨债催款，不宜主动.
+// S0(p131): 反吟利客不利主，主快…长久大事可能有始无终.
+// An hour that is both (different rings) takes 伏吟, as hourRoleFavour does.
+export function mustActFor(rep: { fuYin: boolean; fanYin: boolean }, emergency: number[]): MustAct | null {
+  if (rep.fuYin) return { kind: '伏吟', role: 'host', emergencyDirections: emergency,
+    text: '伏吟：宜守，收敛财货、讨债催款；不宜主动发起',
+    gloss: 'Hold and consolidate; collect what is owed; do not initiate.' };
+  if (rep.fanYin) return { kind: '反吟', role: 'mover', emergencyDirections: emergency,
+    text: '反吟：宜速办短事；忌长久之事（有始无终）',
+    gloss: 'Move fast on short tasks; avoid long undertakings.' };
+  return null;
+}
+
 export interface HourSummary {
   palaces: PalaceScore[];        // length 9, index-ordered
   counts: { prime: number; good: number };
@@ -40,6 +61,8 @@ export interface HourSummary {
   /** null on a very poor hour (五不遇时, or no 吉/大吉 direction) — nothing worth advising. */
   hourRoleFavour: 'mover' | 'host' | null;
   emergencyDirections: number[];
+  /** set on 伏吟 / 反吟 hours — what to do if you must act now */
+  mustAct: MustAct | null;
 }
 
 export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind: 'general' }): HourSummary {
@@ -87,6 +110,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     chartBlocked,
     hourRoleFavour: veryPoor ? null : hourRoleFavour(hourStem, rep),
     emergencyDirections: emergencyDirections(chart),
+    mustAct: mustActFor(rep, emergencyDirections(chart)),
   };
 }
 
