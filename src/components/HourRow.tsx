@@ -1,6 +1,7 @@
 import type { HourSummary } from '../calendar/hour.ts';
 import { shichenWindow } from '../calendar/bands.ts';
 import { BLIND } from '../blind.ts';
+import { BLOCKED_STYLE } from './PalaceCell.tsx';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -27,8 +28,8 @@ export function HourRow({
       className="cell w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left"
       style={{
         background: isActive ? 'var(--bg-cell)' : 'var(--bg-cell-2)',
-        border: `1px solid ${blocked ? 'var(--q-bad)' : isActive ? 'var(--gold-dim)' : 'var(--border)'}`,
-        opacity: blocked ? 0.6 : 1,
+        border: `1px solid ${isActive ? 'var(--gold-dim)' : 'var(--border)'}`,
+        ...(blocked ? BLOCKED_STYLE : null),
       }}
     >
       <span className="w-10 text-sm font-semibold" style={{ color: 'var(--text)',
