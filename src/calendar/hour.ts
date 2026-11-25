@@ -18,7 +18,6 @@ import { matchChart } from './evaluator.ts';
 import { PATTERNS_BY_ID, gradeOf } from './data/patterns.ts';
 import { emergencyDirections, type Direction } from './direction.ts';
 import type { Chart } from '../engine/index.ts';
-import { scoreCounts } from './bandsV2.ts';
 
 /** 主客 for the hour (S0 p139, §4.4). The chart's 格 outranks the hour stem:
  *  伏吟 → 主 (按兵不动，以逸待勞) · 反吟 → 客 (主動出擊); otherwise
@@ -48,7 +47,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
   const dayStem = STEMS[chart.pillars.day.stem];
   const hourStem = STEMS[chart.pillars.hour.stem];
 
-  const chartBlocked = isWuBuYuShi(dayStem, hourStem);
+  const chartBlocked = isWuBuYuShi(dayStem, chart.pillars.hour.name);
 
   const chartWarnings: string[] = [];
   if (chartBlocked) chartWarnings.push('五不遇时');
@@ -67,7 +66,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     if (grade) chartGrades.push({ text: tianXian!.name, grade });
   }
   // 天显时 turns the 伏吟 auspicious (S0 p125/p131), so no 值符伏吟 下格 label then.
-  if (rep.fuYin && !isTianXian) chartGrades.push({ text: '值符伏吟', grade: '下格' });
+  if (rep.starFuYin && !isTianXian) chartGrades.push({ text: '值符伏吟', grade: '下格' });
 
   // 中5 excluded from direction counts (§9-R2). Blocked cells never count.
   let prime = 0, good = 0;
@@ -77,9 +76,8 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     else if (ps.band === 'good') good++;
   }
 
-  // counts as the hour row shows them (score band), so 无可用方位 ⇒ no 主客 advice
-  const shown = scoreCounts(palaces);
-  const veryPoor = chartBlocked || (!shown.prime && !shown.good);
+  // 无可用方位 ⇒ no 主客 advice
+  const veryPoor = chartBlocked || (!prime && !good);
 
   return {
     palaces,

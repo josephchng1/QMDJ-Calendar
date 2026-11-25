@@ -512,6 +512,33 @@ export const PATTERNS_GENG_CONTEXT: PatternRule[] = [
     notes: 'MITIGATOR: 值符 in the same palace damps it — S0(p108).',
     source: 'S0(p136)',
   },
+  // 月/日/时格 — S0(p129): 年、月、日、时的天干，与庚金相遇，均为凶格; p136 avoid list.
+  // A 甲 pillar stem never sits on the 地盘 (甲 hides under its 旬首仪), so these
+  // never match when that pillar stem is 甲 (reported, not resolved — 2026-11-25).
+  {
+    id: 'yue-ge', name: '月格', nameEn: 'Month Obstruction',
+    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
+    when: { tianPanStem: '庚', diPanStemIsRef: 'monthStem' },
+    interpretation: '天盘庚 加 地盘月干 — 太白剋月，行兵、远行、谋事皆不利。',
+    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
+    source: 'S0(p129,p136)',
+  },
+  {
+    id: 'ri-ge', name: '日格', nameEn: 'Day Obstruction (伏干格)',
+    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
+    when: { tianPanStem: '庚', diPanStemIsRef: 'dayStem' },
+    interpretation: '天盘庚 加 地盘日干 (伏干格) — 主客皆伤，尤不利主。',
+    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
+    source: 'S0(p129,p136)',
+  },
+  {
+    id: 'shi-ge', name: '时格', nameEn: 'Hour Obstruction',
+    tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
+    when: { tianPanStem: '庚', diPanStemIsRef: 'hourStem' },
+    interpretation: '天盘庚 加 地盘时干 — 也主凶。',
+    guidance: { favours: [], avoid: ['launch', 'travel', 'contract', 'partnership'] },
+    source: 'S0(p129,p136)',
+  },
   {
     id: 'fugong-ge', name: '伏宫格', nameEn: 'Buried Palace Obstruction',
     tier: 'inauspicious', scope: 'palace', confidence: 'consensus',
@@ -592,6 +619,9 @@ export const XIA_GE_IDS: ReadonlySet<string> = new Set([
   'taibai-ruying',      // 太白入荧
   'huoru-jinxiang',     // 荧入太白
   'sui-ge',             // 岁格
+  'yue-ge',             // 月格
+  'ri-ge',              // 日格
+  'shi-ge',             // 时格
   'fugong-ge',          // 伏宫格
   'feigan-ge',          // 飞干格
   'feigong-ge',         // 飞宫格

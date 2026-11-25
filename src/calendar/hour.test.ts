@@ -22,7 +22,7 @@ describe('hourRoleFavour — 五阳时利客 / 五阴时利主', () => {
     for (let d = 1; d <= 20; d++) for (const hh of HOUR_SAMPLE) {
       const s = computeHourSummary(buildChart({ y: 2026, m: 3, d, hh, mm: 0 }));
       if (s.chartWarnings.includes('伏吟')) { fu++; expect(s.hourRoleFavour).not.toBe('mover'); }
-      const shown = s.palaces.filter((p) => p.palace !== 5 && !p.blocked && p.score >= 16).length;
+      const shown = s.palaces.filter((p) => p.palace !== 5 && !p.blocked && p.band !== 'plain').length;
       if (s.chartBlocked || !shown) { poor++; expect(s.hourRoleFavour).toBeNull(); }
     }
     expect(fu).toBeGreaterThan(0);

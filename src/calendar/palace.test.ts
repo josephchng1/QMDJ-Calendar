@@ -14,13 +14,13 @@ function pal(over: Partial<Palace> & { palace: number }): Palace {
   };
 }
 // month.branch drives 月令; day/hour stems drive 五不遇时 & 时干入墓.
-function chartOf(monthBranch: number, dayStem: string, hourStem: string, palaces: Palace[]): Chart {
+function chartOf(monthBranch: number, dayStem: string, hourStem: string, palaces: Palace[], hourName = ''): Chart {
   const board = { palaces, zhiFuDisplayPalace: 1, zhiShiDisplayPalace: 1, xunShouYi: '己' } as unknown as Board;
   return {
     pillars: {
       month: { branch: monthBranch },
       day: { stem: STEMS.indexOf(dayStem) },
-      hour: { stem: STEMS.indexOf(hourStem), name: '' },
+      hour: { stem: STEMS.indexOf(hourStem), name: hourName },
     },
     board,
   } as unknown as Chart;
@@ -89,7 +89,7 @@ describe('hard exclusions block a cell regardless of stacked 吉格', () => {
   });
   it('五不遇时 → blocked + plain even on a would-be prime cell', () => {
     const p = pal({ palace: 6, gate: '开门', tianPanStems: ['丁'], diPanStem: '戊' });
-    const r = evalOne(8, '甲', '庚', p); // 甲日庚时 = 五不遇时
+    const r = evaluatePalace(chartOf(8, '甲', '庚', [p], '庚午'), p, [], gen); // 甲日庚午时 = 五不遇时
     expect(r.blocked).toBe(true);
     expect(r.band).toBe('plain');
     expect(r.reasons.join('')).toContain('五不遇时');

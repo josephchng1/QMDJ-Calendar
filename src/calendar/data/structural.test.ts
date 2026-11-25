@@ -48,17 +48,20 @@ describe('element relations', () => {
 });
 
 describe('五不遇时', () => {
-  it('matches the whole canonical table', () => {
+  it('matches the whole canonical table (S0 p133/p135), by hour ganzhi', () => {
     for (const [day, cell] of Object.entries(WU_BU_YU_TABLE)) {
-      const hourStem = cell[0]; // first char of e.g. 庚午时
-      expect(isWuBuYuShi(day, hourStem), `${day}日 ${cell}`).toBe(true);
+      expect(isWuBuYuShi(day, cell.slice(0, 2)), `${day}日 ${cell}`).toBe(true);
     }
   });
-  it('is false when polarity differs (甲日 辛时: 辛克甲 but yin vs yang)', () => {
-    expect(isWuBuYuShi('甲', '辛')).toBe(false);
+  it('己日乙亥 and 庚日丙戌 do NOT fire (only 乙丑 / 丙子 are in the table)', () => {
+    expect(isWuBuYuShi('己', '乙亥')).toBe(false);
+    expect(isWuBuYuShi('庚', '丙戌')).toBe(false);
+    expect(isWuBuYuShi('己', '乙丑')).toBe(true);
+    expect(isWuBuYuShi('庚', '丙子')).toBe(true);
   });
-  it('is false when the hour does not 克 the day', () => {
-    expect(isWuBuYuShi('甲', '丙')).toBe(false); // 丙火 does not 克 甲木
+  it('is false off-table (甲日 辛未, 甲日 丙寅)', () => {
+    expect(isWuBuYuShi('甲', '辛未')).toBe(false);
+    expect(isWuBuYuShi('甲', '丙寅')).toBe(false);
   });
 });
 
@@ -143,12 +146,13 @@ describe('门迫 / 宫迫 / 和义', () => {
   });
 });
 
-describe('伏吟 / 反吟 (2026-07-29, validated by Joe)', () => {
+describe('伏吟 / 反吟 — star ring (2026-07-29, validated by Joe) + gate ring (S0 p131, 2026-11-25)', () => {
   const opts = { method: 'zhirun', spiritVariant: false, lateZiNextDay: true } as const;
   const rep = (branchIndex: number) =>
     repetition(buildChart({ y: 2026, m: 7, d: 29, hh: HOUR_SAMPLE[branchIndex], mm: 0, ...opts }).board);
 
-  // 值符 mechanism only — the 值使 gate ring must NOT count (it over-fired 未/酉).
+  // The star ring alone matches the 2026-07-29 validation. The gate ring is now
+  // counted separately (p131 门伏吟/门反吟), so the hour flags may differ from it.
   it('子时 甲子 = 伏吟 (值符归本位; 甲-hour/天显时 still reported)', () => {
     expect(rep(0).fuYin).toBe(true);
     expect(rep(0).fanYin).toBe(false);
@@ -160,13 +164,14 @@ describe('伏吟 / 反吟 (2026-07-29, validated by Joe)', () => {
   it('辰时 戊辰 = 伏吟', () => {
     expect(rep(4).fuYin).toBe(true);
   });
-  it('未时 辛未 = neither (gate-ring alignment must not count)', () => {
-    expect(rep(7).fuYin).toBe(false);
-    expect(rep(7).fanYin).toBe(false);
-  });
-  it('酉时 癸酉 = neither', () => {
-    expect(rep(9).fuYin).toBe(false);
-    expect(rep(9).fanYin).toBe(false);
+  it('未时 辛未 / 酉时 癸酉: star ring neither; the hour flag = star OR gate ring', () => {
+    for (const bi of [7, 9]) {
+      const r = rep(bi);
+      expect(r.starFuYin).toBe(false);
+      expect(r.starFanYin).toBe(false);
+      expect(r.fuYin).toBe(r.starFuYin || r.gateFuYin);
+      expect(r.fanYin).toBe(r.starFanYin || r.gateFanYin);
+    }
   });
 });
 
