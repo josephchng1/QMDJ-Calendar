@@ -282,7 +282,7 @@ function formationContribution(f: MatchedFormation, gate: string | null): number
   }
   return TIER_WEIGHTS[f.tier];
 }
-function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number {
+export function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number {
   // Purpose mode: derive 用神 + class emphasis; general mode leaves all ×1 / no bonus.
   const pp = profile.kind === 'purpose' ? purposeProfile(profile.activity) : null;
   const { CLASS_WEIGHT, VALENCE, WONDER_VALENCE } = TUNING;
