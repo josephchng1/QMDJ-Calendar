@@ -1,62 +1,89 @@
-// Calibration + regression gate (§8.1). Computes the real per-(hour×palace) score
-// distribution across 2026 and asserts the band frequencies stay tradition-shaped
-// (大吉 ≈ 2-5%, 大吉+吉 ≈ 20-30%, blocked ≈ 20-32%). A scoring change that shifts
-// these materially fails CI loudly. Also logs a greppable block for re-tuning.
+// Display score + calibration table (spec §1.2, §5.1). The old SCORE_PRIME/SCORE_GOOD
+// threshold gate is retired: the band is the ladder's, and the number is pinned inside it.
 import { describe, it, expect } from 'vitest';
 import { buildChart } from '../engine/index.ts';
 import { computeHourSummary } from './hour.ts';
 import { HOUR_SAMPLE, daysInMonth, type CalendarOptions } from './summary.ts';
-import { scoreBand } from './bandsV2.ts';
+import { scoringHash, TUNING, type Band } from './palace.ts';
+import { displayScore, percentileOf, DISPLAY_RANGE } from './bandsV2.ts';
+import CALIBRATION from './data/scoreCalibration.json' with { type: 'json' };
+import { TIER_WEIGHTS } from './data/patterns.ts';
 
-function pct(sorted: number[], p: number): number {
-  const i = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
-  return sorted[i];
-}
+describe('calibration table', () => {
+  it('hash matches the current scoring constants (rebuild: npm run calibrate)', () => {
+    expect(CALIBRATION.hash).toBe(scoringHash());
+  });
+  it('the hash moves when any tuning constant changes', () => {
+    const h = scoringHash();
+    TUNING.K_SHENG += 0.01;
+    try { expect(scoringHash()).not.toBe(h); } finally { TUNING.K_SHENG -= 0.01; }
+    (TIER_WEIGHTS as Record<string, number>).auspicious += 1;
+    try { expect(scoringHash()).not.toBe(h); } finally { (TIER_WEIGHTS as Record<string, number>).auspicious -= 1; }
+    expect(scoringHash()).toBe(h);
+  });
+  it('every bucket has 101 non-decreasing quantiles', () => {
+    for (const q of Object.values(CALIBRATION.buckets) as number[][]) {
+      expect(q).toHaveLength(101);
+      for (let i = 1; i < q.length; i++) expect(q[i]).toBeGreaterThanOrEqual(q[i - 1]);
+    }
+  });
+});
 
-describe('score calibration', () => {
-  it('band distribution over 2026 stays tradition-shaped (zhirun)', () => {
+describe('display score', () => {
+  it('percentileOf is monotone and clamped', () => {
+    const q = [0, 0, 0, 10, 20, 20, 30];
+    let last = -1;
+    for (let x = -5; x <= 35; x += 0.5) {
+      const p = percentileOf(q, x);
+      expect(p).toBeGreaterThanOrEqual(last);
+      expect(p).toBeGreaterThanOrEqual(0);
+      expect(p).toBeLessThanOrEqual(1);
+      last = p;
+    }
+  });
+  const bands: Band[] = ['prime', 'good', 'plain'];
+  for (const method of ['zhirun', 'chaibu']) for (const profile of ['general', 'launch']) {
+    it(`monotone in raw within each band, and pinned to its range — ${method}/${profile}`, () => {
+      for (const b of bands) {
+        let last = -Infinity;
+        for (let raw = -300; raw <= 500; raw += 0.7) {
+          const d = displayScore(raw, b, method, profile);
+          expect(d).toBeGreaterThanOrEqual(last);
+          expect(d).toBeGreaterThanOrEqual(DISPLAY_RANGE[b][0]);
+          expect(d).toBeLessThanOrEqual(DISPLAY_RANGE[b][1]);
+          last = d;
+        }
+      }
+    });
+  }
+  it('every 大吉 > every 吉 > every 不吉', () => {
+    expect(DISPLAY_RANGE.prime[0]).toBeGreaterThan(DISPLAY_RANGE.good[1]);
+    expect(DISPLAY_RANGE.good[0]).toBeGreaterThan(DISPLAY_RANGE.plain[1]);
+  });
+  it('deterministic', () => {
+    expect(displayScore(37.3, 'good', 'zhirun', 'general')).toBe(displayScore(37.3, 'good', 'zhirun', 'general'));
+  });
+});
+
+// Distribution report over 2026 (no shape gate: the band is the ladder's, and §8.1 is
+// checked in validation-plan/report). Logged, greppable.
+describe('2026 band distribution (zhirun, general)', () => {
+  it('logs the ladder distribution', () => {
     const opts: CalendarOptions = { method: 'zhirun', spiritVariant: false, lateZiNextDay: true };
-    const scores: number[] = [];
     let cells = 0, blocked = 0, prime = 0, good = 0;
-    const year = 2026;
-    for (let m = 1; m <= 12; m++) {
-      const dim = daysInMonth(year, m);
-      for (let d = 1; d <= dim; d += 3) {          // sample every 3rd day
-        HOUR_SAMPLE.forEach((hh) => {
-          const hs = computeHourSummary(buildChart({ y: year, m, d, hh, mm: 0, ...opts }));
-          for (const p of hs.palaces) {
-            if (p.palace === 5) continue;
-            cells++;
-            if (p.blocked) { blocked++; continue; }
-            scores.push(p.score);
-            const b = scoreBand(p.score, p.blocked);
-            if (b === 'prime') prime++; else if (b === 'good') good++;
-          }
-        });
+    for (let m = 1; m <= 12; m++) for (let d = 1; d <= daysInMonth(2026, m); d += 3) {
+      for (const hh of HOUR_SAMPLE) {
+        const hs = computeHourSummary(buildChart({ y: 2026, m, d, hh, mm: 0, ...opts }));
+        for (const p of hs.palaces) {
+          if (p.palace === 5) continue;
+          cells++;
+          if (p.blocked) blocked++; else if (p.band === 'prime') prime++; else if (p.band === 'good') good++;
+        }
       }
     }
-    scores.sort((a, b) => a - b);
-    const usable = cells - blocked;
-    const primePct = 100 * prime / usable;
-    const goodPct = 100 * good / usable;
-    const blockedPct = 100 * blocked / cells;
-
+    const pc = (n: number) => +(100 * n / cells).toFixed(1);
     // eslint-disable-next-line no-console
-    console.log('CALIB>>>' + JSON.stringify({
-      cells, usable, blockedPct: +blockedPct.toFixed(1),
-      primePct: +primePct.toFixed(1), goodPct: +goodPct.toFixed(1),
-      primeGoodPct: +(primePct + goodPct).toFixed(1),
-      min: scores[0], max: scores[scores.length - 1],
-      p: Object.fromEntries([50, 75, 90, 95, 96, 97, 99].map((q) => [q, +pct(scores, q).toFixed(1)])),
-    }) + '<<<CALIB');
-
-    // Regression gate — tradition-shaped frequencies (§8.1).
-    expect(usable).toBeGreaterThan(1000);
-    expect(blockedPct).toBeGreaterThan(18);
-    expect(blockedPct).toBeLessThan(34);
-    expect(primePct).toBeGreaterThan(2);
-    expect(primePct).toBeLessThan(6);
-    expect(primePct + goodPct).toBeGreaterThan(18);
-    expect(primePct + goodPct).toBeLessThan(32);
+    console.log('CALIB>>>' + JSON.stringify({ cells, prime: pc(prime), good: pc(good), blocked: pc(blocked) }) + '<<<CALIB');
+    expect(cells).toBeGreaterThan(1000);
   }, 120000);
 });

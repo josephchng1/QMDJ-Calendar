@@ -5,7 +5,6 @@ import { describe, it, expect } from 'vitest';
 import { searchRange, type SearchQuery, type SlotResult } from './search.ts';
 import { buildChart } from '../engine/index.ts';
 import { computeHourSummary } from './hour.ts';
-import { scoreBand } from './bandsV2.ts';
 import { HOUR_SAMPLE } from './summary.ts';
 
 const START = { y: 2026, m: 1, d: 1 };
@@ -25,8 +24,14 @@ function isSortedDesc(xs: number[]): boolean {
 describe('searchRange — recommended', () => {
   const r = searchRange(base({ mode: 'recommended', activity: 'launch' }));
   it('scans every day × 时辰', () => expect(r.scanned).toBe(7 * 12));
-  it('ranks usable results by score, descending', () =>
-    expect(isSortedDesc(r.slots.filter((s) => !s.blocked).map((s) => s.score))).toBe(true));
+  it('ranks usable results by display score, descending (band first)', () =>
+    expect(isSortedDesc(r.slots.filter((s) => !s.blocked).map((s) => s.display!))).toBe(true));
+  it('ties on display break on the raw score', () => {
+    const us = r.slots.filter((s) => !s.blocked);
+    for (let i = 1; i < us.length; i++) if (us[i].display === us[i - 1].display) {
+      expect(us[i].score).toBeLessThanOrEqual(us[i - 1].score);
+    }
+  });
   it('lists 不吉 and 不用 slots too, 不用 ranked last', () => {
     const all = searchRange(base({ mode: 'recommended', activity: 'launch', limit: 999 })).slots;
     expect(all.some((s) => s.band === 'plain' && !s.blocked)).toBe(true);
@@ -38,9 +43,13 @@ describe('searchRange — recommended', () => {
     for (const s of r.slots.slice(0, 5)) {
       const chart = buildChart({ y: s.y, m: s.m, d: s.d, hh: HOUR_SAMPLE[s.branchIndex], mm: 0 });
       const hs = computeHourSummary(chart, { kind: 'purpose', activity: 'launch' });
-      const best = Math.max(...hs.palaces.filter((p) => p.palace !== 5 && !p.blocked).map((p) => p.score));
-      expect(s.score).toBe(best);
-      expect(s.band).toBe(scoreBand(best, false));
+      const rank = { prime: 2, good: 1, plain: 0 };
+      const us = hs.palaces.filter((p) => p.palace !== 5 && !p.blocked);
+      const top = Math.max(...us.map((p) => rank[p.band]));
+      const best = us.filter((p) => rank[p.band] === top).reduce((a, b) => (b.score > a.score ? b : a));
+      expect(s.band).toBe(best.band);
+      expect(s.display).toBe(best.display);
+      expect(s.score).toBe(best.score);
     }
   });
 });
@@ -78,8 +87,8 @@ describe('searchRange — filter', () => {
     expect(blockedLast(r.slots)).toBe(true);
   });
   it('a minScore threshold drops 不吉 and 不用', () => {
-    const r = searchRange(base({ mode: 'filter', filters: { minScore: 16 } }));
-    expect(r.slots.every((s) => !s.blocked && s.score >= 16)).toBe(true);
+    const r = searchRange(base({ mode: 'filter', filters: { minScore: 40 } }));
+    expect(r.slots.every((s) => !s.blocked && s.display! >= 40 && s.band !== 'plain')).toBe(true);
   });
   it('require gate returns only slots holding the required 格局', () => {
     const r = searchRange(base({ mode: 'filter', filters: { require: ['qinglong-fanshou'] } }));

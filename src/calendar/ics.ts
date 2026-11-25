@@ -4,7 +4,6 @@
 // the DOM. Times are emitted as UTC (…Z) from the CHART's civil zone (UTC+8 by
 // default), not the browser's, so a client abroad gets the instant that was scored.
 // ─────────────────────────────────────────────────────────────────────────────
-import { scoreBand } from './bandsV2.ts';
 import { DIRECTION_LABEL } from './direction.ts';
 import type { PalaceScore } from './palace.ts';
 
@@ -28,7 +27,7 @@ export function slotEvent(
   const prime: string[] = [], good: string[] = [];
   for (const p of palaces) {
     if (p.palace === 5 || p.blocked || !p.direction) continue;
-    const b = scoreBand(p.score, p.blocked);
+    const b = p.band;
     if (b === 'prime') prime.push(DIRECTION_LABEL[p.direction]);
     else if (b === 'good') good.push(DIRECTION_LABEL[p.direction]);
   }

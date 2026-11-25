@@ -1,6 +1,6 @@
 import type { PalaceScore } from '../calendar/palace.ts';
 import { DIRECTION_LABEL } from '../calendar/direction.ts';
-import { V2_BAND_LABEL, V2_BAND_COLOR, scoreBand } from '../calendar/bandsV2.ts';
+import { V2_BAND_LABEL, V2_BAND_COLOR } from '../calendar/bandsV2.ts';
 
 /** Small bordered chip — shared by the scored palace board and its reason trace.
  *  `strong` fills the chip so 上格/下格 labels read louder than plain badges. */
@@ -33,11 +33,10 @@ export function GradeChips({ grades }: { grades: PalaceScore['grades'] }) {
   );
 }
 
-/** The "why is this coloured?" trace. Headline colour/label follow the SCORE band
- *  (matches the cell tint); the classical rung + reasons follow underneath as the
- *  traditional basis. */
+/** The "why is this coloured?" trace: the ladder band (the cell tint), its display
+ *  score, then the classical rung + reasons that decided it. */
 export function PalaceReasons({ ps }: { ps: PalaceScore }) {
-  const band = scoreBand(ps.score, ps.blocked);
+  const band = ps.band;
   const label = V2_BAND_LABEL[band];
   const color = V2_BAND_COLOR[band];
   return (
@@ -46,7 +45,7 @@ export function PalaceReasons({ ps }: { ps: PalaceScore }) {
         <span className="font-semibold" style={{ color }}>
           {ps.direction ? DIRECTION_LABEL[ps.direction] : ''}方 · {ps.blocked ? '不用' : label}
         </span>
-        <span className="tabular-nums" style={{ color: 'var(--text-dim)' }}>分 {ps.blocked ? '—' : Math.round(ps.score)}</span>
+        <span className="tabular-nums" style={{ color: 'var(--text-dim)' }}>分 {ps.blocked ? '—' : ps.display}</span>
         <span style={{ color: 'var(--text-dim)' }}>{ps.rung}</span>
       </div>
       <ul className="list-disc pl-4 flex flex-col gap-0.5" style={{ color: 'var(--text)' }}>

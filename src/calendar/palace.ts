@@ -29,8 +29,10 @@ import { purposeProfile, YONGSHEN } from './profiles.ts';
 import {
   directionOf, baseFilter, hasEffectiveSanQi, type Direction, type BaseFilterResult,
 } from './direction.ts';
+import { displayScore } from './bandsV2.ts';
+import { ALL_PATTERNS } from './data/patterns.ts';
 import {
-  gateVitality, stemVitality, starVitality, seasonElement, amplitude,
+  gateVitality, stemVitality, starVitality, seasonElement, amplitude, AMPLITUDE,
   type GateVitality, type StarVitality,
 } from './strength.ts';
 
@@ -53,7 +55,9 @@ export interface PalaceScore {
   rung: Rung;
   reasons: string[];
   blocked: boolean;
-  score: number;                 // ORDERING ONLY
+  score: number;                 // raw ORDERING score — internal, never shown
+  /** 0–100 display score pinned inside the band (bandsV2.displayScore); null when blocked (不用). */
+  display: number | null;
   matched: MatchedFormation[];
   warnings: string[];
   badges: string[];
@@ -378,7 +382,7 @@ export function evaluatePalace(
   if (p.palace === 5) {
     return {
       palace: 5, direction: null, band: 'plain', rung: '凶方', reasons: [], blocked: false,
-      score: 0, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
+      score: 0, display: null, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
       strength: { gate: null, star: null, spirit: null, stems: {} },
     };
   }
@@ -402,15 +406,36 @@ export function evaluatePalace(
   if (matched.some((m) => m.id === 'qinglong-taozou' || m.id === 'zhuque-toujiang')) badges.push('为主不害');
 
   const score = blocked ? BLOCKED_SCORE : orderingScore(p, ev, profile);
+  const display = blocked ? null
+    : displayScore(score, band, chart.input?.method ?? 'zhirun', profileKey(profile));
 
   return {
     palace: p.palace,
     direction: directionOf(p.palace),
-    band, rung, reasons, blocked, score, matched, warnings, badges,
+    band, rung, reasons, blocked, score, display, matched, warnings, badges,
     grades: gradesFor(p, ev, matched),
     baseFilter: baseFilter(p, matched, goodGates),
     strength: ev.strength,
   };
+}
+
+/** Calibration profile key: 'general' or the 用事 id. */
+export const profileKey = (profile: ScoreProfile): string =>
+  profile.kind === 'purpose' ? profile.activity : 'general';
+
+/** Hash of every constant that moves a band or a raw score. scoreCalibration.json
+ *  stores it; a test fails when they differ, so the table cannot go stale silently. */
+export function scoringHash(): string {
+  const text = JSON.stringify({
+    TUNING, TOP_TIER: [...TOP_TIER], HARD_GE_IDS: [...HARD_GE_IDS], GOOD_SPIRITS,
+    AMPLITUDE, YONGSHEN, TIER_WEIGHTS, GATES, STARS, SPIRITS,
+    PATTERNS: ALL_PATTERNS.map((r) => [r.id, r.tier, r.scope, r.when]),
+    PRESETS: ACTIVITY_PRESETS,
+    EMPHASIS: Object.keys(ACTIVITY_PRESETS).map((a) => purposeProfile(a as ApplicationTag).classEmphasis),
+  });
+  let h = 0x811c9dc5;                                   // FNV-1a, 32-bit
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16).padStart(8, '0');
 }
 
 export function hourCtx(chart: Chart): HourCtx {

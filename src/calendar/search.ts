@@ -13,7 +13,6 @@
 import { buildChart } from '../engine/index.ts';
 import { computeHourSummary, type HourSummary } from './hour.ts';
 import { evaluateChart } from './evaluator.ts';
-import { scoreBand } from './bandsV2.ts';
 import type { Band, ScoreProfile, GradedFormation, PalaceScore } from './palace.ts';
 import type { Direction } from './direction.ts';
 import { HOUR_SAMPLE, type CalendarOptions } from './summary.ts';
@@ -32,7 +31,7 @@ export interface SearchQuery {
   filters?: {
     require?: string[];         // formation ids that must be present
     avoid?: string[];           // formation ids OR warning labels that must be absent
-    minScore?: number;          // on the v2 direction score (吉 ≥ SCORE_GOOD, 大吉 ≥ SCORE_PRIME)
+    minScore?: number;          // on the 0–100 display score (吉 ≥ 40, 大吉 ≥ 70)
     allowWuBuYu?: boolean;      // surface 时干入墓 slots (default: hide); 五不遇时 is always blocked
   };
   role?: 'host' | 'mover';      // 主/客 for competition/travel
@@ -43,9 +42,10 @@ export interface SearchQuery {
 export interface SlotResult {
   y: number; m: number; d: number; hh: number; branchIndex: number;
   dayGanzhi: string; hourGanzhi: string;
-  /** best usable direction's score + display band — what the board shows for this 时辰.
-   *  blocked ⇒ 不用 (ranked last); direction is null only when the whole 时辰 is 不用. */
-  score: number; band: Band; direction: Direction | null; blocked: boolean;
+  /** best usable direction's ladder band + display score — what the board shows for this
+   *  时辰. blocked ⇒ 不用 (display null, ranked last); direction is null only when the
+   *  whole 时辰 is 不用. `score` is the raw ordering score (internal tie-break only). */
+  score: number; display: number | null; band: Band; direction: Direction | null; blocked: boolean;
   /** 上格/下格 labels exactly as the board shows them: chart-scope + this direction's palace */
   grades: GradedFormation[];
   /** what affects this hour at this direction: chart-wide (伏吟/反吟 …) + this palace's (空亡/门迫 …) */
@@ -57,7 +57,10 @@ export interface SearchResult {
   scanned: number;
 }
 
-const ROLE_BONUS = 15;   // ranking tie-break only — never added to the shown score
+// 主/客 fit: a tie-break WITHIN equal display scores of one band only. It never moves a
+// slot across a band and is never added to the shown number (spec §1.2).
+const ROLE_BONUS = 15;
+const BAND_RANK: Record<Band, number> = { prime: 2, good: 1, plain: 0 };
 
 function addDays(s: { y: number; m: number; d: number }, off: number) {
   const dt = new Date(s.y, s.m - 1, s.d + off);
@@ -82,7 +85,9 @@ function bestPalace(hs: HourSummary, want: string[], avoid: string[]): PalaceSco
   const usable = (holding.length ? holding : outer)
     .filter((ps) => !ps.blocked && !ps.matched.some((m) => avoid.includes(m.id)));
   if (!usable.length) return holding[0] ?? null;
-  return usable.reduce((a, b) => (b.score > a.score ? b : a));
+  // band first, then display (≡ raw within a band)
+  return usable.reduce((a, b) => (BAND_RANK[b.band] > BAND_RANK[a.band]
+    || (b.band === a.band && b.score > a.score) ? b : a));
 }
 
 export function searchRange(q: SearchQuery): SearchResult {
@@ -96,7 +101,7 @@ export function searchRange(q: SearchQuery): SearchResult {
   const want = (q.mode === 'by-formation' ? [q.formationId ?? ''] : q.mode === 'filter' ? q.filters?.require ?? [] : [])
     .filter((id) => PATTERNS_BY_ID[id]?.scope === 'palace');
 
-  const ranked: { slot: SlotResult; rank: number }[] = [];
+  const ranked: { slot: SlotResult; bonus: number }[] = [];
   let scanned = 0;
 
   for (let off = 0; off < q.days; off++) {
@@ -119,15 +124,16 @@ export function searchRange(q: SearchQuery): SearchResult {
       const blocked = !best || best.blocked || best.matched.some((m) => preset?.excludeFormations.includes(m.id))
         || !!preset?.excludeWarnings.some((w) => warnings.includes(w));
       const score = blocked ? 0 : best.score;
+      const display = blocked ? null : best.display;
 
-      if (!passesMode(q, warnings, matchedIds, score)) continue;
+      if (!passesMode(q, warnings, matchedIds, display)) continue;
 
       ranked.push({
-        rank: blocked ? -Infinity : score + roleBonus(warnings, q.role, preset),
+        bonus: roleBonus(warnings, q.role, preset),
         slot: {
           y, m, d, hh, branchIndex: bi,
           dayGanzhi: chart.pillars.day.name, hourGanzhi: chart.pillars.hour.name,
-          score, band: scoreBand(score, blocked), direction: best?.direction ?? null, blocked,
+          score, display, band: blocked ? 'plain' : best.band, direction: best?.direction ?? null, blocked,
           grades: [...hs.chartGrades, ...(best?.grades ?? [])],
           warnings: [...new Set([...warnings, ...(best?.warnings ?? [])])],
         },
@@ -135,7 +141,12 @@ export function searchRange(q: SearchQuery): SearchResult {
     }
   }
 
-  ranked.sort((a, b) => b.rank - a.rank);
+  // 不用 last; then display score (band first, since the ranges don't overlap); then
+  // the 主/客 tie-break; then raw score. Stable sort keeps date order for full ties.
+  ranked.sort((a, b) => (Number(a.slot.blocked) - Number(b.slot.blocked))
+    || ((b.slot.display ?? -1) - (a.slot.display ?? -1))
+    || (b.bonus - a.bonus)
+    || (b.slot.score - a.slot.score));
   return { slots: ranked.slice(0, q.limit ?? 80).map((r) => r.slot), scanned };
 }
 
@@ -143,7 +154,7 @@ function passesMode(
   q: SearchQuery,
   warnings: string[],
   matchedIds: Set<string>,
-  score: number,
+  display: number | null,
 ): boolean {
   // 不吉 / 不用 slots are not hidden — they simply rank low (by score; 不用 last).
   const tomb = warnings.includes('时干入墓');
@@ -160,7 +171,7 @@ function passesMode(
       const f = q.filters ?? {};
       if (f.require && !f.require.every((id) => matchedIds.has(id))) return false;
       if (f.avoid && f.avoid.some((x) => matchedIds.has(x) || warnings.includes(x))) return false;
-      if (f.minScore && score < f.minScore) return false;   // 0 = no threshold
+      if (f.minScore && (display ?? -1) < f.minScore) return false;   // 0 = no threshold
       if (!f.allowWuBuYu && tomb) return false;
       return true;
     }

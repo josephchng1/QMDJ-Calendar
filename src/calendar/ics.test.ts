@@ -2,20 +2,20 @@ import { describe, it, expect } from 'vitest';
 import type { PalaceScore } from './palace.ts';
 import { slotEvent, buildIcs, googleCalendarUrl } from './ics.ts';
 
-function ps(palace: number, direction: PalaceScore['direction'], score: number): PalaceScore {
-  return { palace, direction, band: 'plain', rung: '凶方', reasons: [], blocked: false,
-    score, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
+function ps(palace: number, direction: PalaceScore['direction'], band: PalaceScore['band']): PalaceScore {
+  return { palace, direction, band, rung: '凶方', reasons: [], blocked: false,
+    score: 0, display: null, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
     strength: { gate: null, star: null, spirit: null, stems: {} } };
 }
 
 describe('ics export', () => {
-  const palaces = [ps(9, 'S', 200), ps(4, 'SE', 40), ps(1, 'N', -10), ps(5, null, 0)];
+  const palaces = [ps(9, 'S', 'prime'), ps(4, 'SE', 'good'), ps(1, 'N', 'plain'), ps(5, null, 'plain')];
   const ev = slotEvent({ y: 2026, m: 8, d: 14 }, 4, palaces);   // 辰时 07:00–09:00
 
   it('summarises 大吉/吉 directions', () => {
     expect(ev.title).toContain('辰时');
-    expect(ev.description).toContain('大吉方位：南');   // score 200 ≥ SCORE_PRIME
-    expect(ev.description).toContain('吉方位：东南');   // score 40 in [16,120)
+    expect(ev.description).toContain('大吉方位：南');   // ladder band
+    expect(ev.description).toContain('吉方位：东南');
     expect(ev.end.getTime() - ev.start.getTime()).toBe(2 * 3600 * 1000);
   });
 

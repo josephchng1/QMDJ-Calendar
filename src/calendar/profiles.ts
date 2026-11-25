@@ -7,9 +7,9 @@
 // symbol class the 用神綱領 says matters for that kind of matter (S0 p145):
 //   测人事 → 以八门为主   ·   测地理/方位 → 以九宫为主   ·   大事 → 看九星
 //
-// Only the SCORE is touched (orderingScore step 9). The band still follows the
-// score (scoreBand), so a 用神-matching direction rises into 吉/大吉 for that
-// activity. General-mode scoring is untouched, so the calibration gate holds.
+// Only the SCORE is touched (orderingScore step 9), so 用神 reorders directions
+// WITHIN a ladder band; the band itself follows the preset's goodGates (assignBand).
+// Each 用事 has its own display-score calibration table (scoreCalibration.json).
 // Every number here is a tuning knob (§8.2) — Joe to validate weights.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { ApplicationTag, Door, Spirit } from './data/patterns.ts';
