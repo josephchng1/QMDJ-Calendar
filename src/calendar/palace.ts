@@ -192,12 +192,16 @@ export function assignBand(ev: PalaceEval, p: Palace, hour: HourCtx, profile: Sc
   if (ev.controlled) hard.push('三奇受制');
   if (ev.shiGanRuMu) hard.push('时干入墓');
   hard.push(...ev.hardGe);
-  if (hard.length) return BLOCK(hard.join('、'));
-
-  // STEP 1 — THE LADDER.
   const goodGates: readonly Door[] = profile.kind === 'purpose'
     ? ACTIVITY_PRESETS[profile.activity].goodGates
     : GOOD_GATES;
+  // 凶门被迫 — 事更凶，不可用 (S0 p131 direction; block is a practitioner ruling, 2026-11-25).
+  // 凶门 = an inauspicious gate that is not one of this profile's good gates.
+  if (ev.menGong === '迫' && ev.door != null && GATES[ev.door as Door]?.quality === 'inauspicious'
+      && !goodGates.includes(ev.door as Door)) hard.push('凶门被迫');
+  if (hard.length) return BLOCK(hard.join('、'));
+
+  // STEP 1 — THE LADDER.
   const hasGate = ev.door != null && goodGates.includes(ev.door as Door);
   const hasQi = ev.hasQi;
   const hasJiGe = ev.matched.some(isJiGe);

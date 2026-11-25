@@ -113,8 +113,13 @@ describe('§3.2 demotions — one band each, applied once, stacking', () => {
       expect(r.reasons.filter((x) => x.includes(tag))).toHaveLength(1);
     }
   });
-  it('negative: 门迫 on a non-good gate is not a demotion', () =>
-    expect(band(ev({ door: '死门', hasQi: false, menGong: '迫', matched: [JIGE] })).band).toBe('good'));
+  it('凶门被迫 → blocked, even with 青龙返首 (practitioner ruling 2026-11-25)', () => {
+    const r = band(ev({ door: '死门', hasQi: true, menGong: '迫', matched: [QLFS] }));
+    expect(r.blocked).toBe(true);
+    expect(r.reasons.join('')).toContain('凶门被迫');
+  });
+  it('negative: 迫 on a neutral gate (杜门) neither blocks nor demotes', () =>
+    expect(band(ev({ door: '杜门', hasQi: false, menGong: '迫', matched: [JIGE] })).band).toBe('good'));
 });
 
 describe('§3.3 伏吟 / 反吟 per palace (S0 p131)', () => {

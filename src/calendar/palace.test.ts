@@ -74,7 +74,7 @@ describe('top-tier promotion — 若逢迫墓击刑，吉事成凶', () => {
     expect(r.band).toBe('prime');
   });
   it('青龙返首 with 门迫 → stays good', () => {
-    const r = evalOne(8, '甲', '乙', pal({ palace: 1, gate: '死门', diPanStem: '丁' }), [qlfs]); // 死门土 in 坎1水 = 迫
+    const r = evalOne(8, '甲', '乙', pal({ palace: 2, gate: '杜门', diPanStem: '丁' }), [qlfs]); // 杜门木 in 坤2土 = 迫 (neutral gate: no block, no demotion)
     expect(r.band).toBe('good');
   });
 });
