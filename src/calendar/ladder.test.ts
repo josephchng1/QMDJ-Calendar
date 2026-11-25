@@ -35,8 +35,8 @@ const NO_REP: Repetition = {
 };
 const hour = (rep: Partial<Repetition> = {}, over: Partial<HourCtx> = {}): HourCtx => {
   const r = { ...NO_REP, ...rep };
-  r.fuYin = r.anyFuYin = r.starFuYin || r.gateFuYin;
-  r.fanYin = r.anyFanYin = r.starFanYin || r.gateFanYin;
+  r.fuYin = r.anyFuYin = r.starFuYin;     // star ring only (2026-11-26)
+  r.fanYin = r.anyFanYin = r.starFanYin;
   return { wuBuYuShi: false, rep: r, tianXian: false, xunShouYi: '戊', ...over };
 };
 const band = (e: PalaceEval, h = hour(), p = pal()) => assignBand(e, p, h, gen);
@@ -134,9 +134,9 @@ describe('§3.3 伏吟 / 反吟 per palace (S0 p131)', () => {
       pal({ palace: 1, gate: '休门', stars: ['天蓬'] }));
     expect(r.blocked).toBe(true);
   });
-  it('worst 伏吟: 死门 over 死门 (gate ring) → blocked despite a 吉格', () => {
+  it('worst 伏吟: 死门 over 死门 (star 伏吟 with gates home) → blocked despite a 吉格', () => {
     const p = pal({ palace: 2, gate: '死门' });
-    expect(band(ev({ door: '死门', hasQi: false, matched: [JIGE] }), hour({ gateFuYin: true }), p).blocked).toBe(true);
+    expect(band(ev({ door: '死门', hasQi: false, matched: [JIGE] }), hour({ starFuYin: true, gateFuYin: true }), p).blocked).toBe(true);
     // negative: star-ring 伏吟 only → 死门 at 2 is not the worst case; the 吉格 rescues
     const r = band(ev({ door: '死门', hasQi: false, matched: [JIGE] }), hour({ starFuYin: true }), p);
     expect(r.blocked).toBe(false);
@@ -150,7 +150,7 @@ describe('§3.3 伏吟 / 反吟 per palace (S0 p131)', () => {
   it('伏吟 with a good gate → down one band (有救)', () =>
     expect(band(ev(), hour({ starFuYin: true })).band).toBe('good'));
   it('伏吟 with only a 吉格 → down one band', () =>
-    expect(band(ev({ door: '死门', hasQi: false, matched: [JIGE] }), hour({ gateFuYin: true })).band).toBe('plain'));
+    expect(band(ev({ door: '死门', hasQi: false, matched: [JIGE] }), hour({ starFuYin: true })).band).toBe('plain'));
   it('伏吟 with no rescuer → blocked', () => expect(band(plainPal, hour({ starFuYin: true })).blocked).toBe(true));
   it('反吟 (star) rescued by 三奇 alone → not blocked', () => {
     const r = band(ev({ door: '死门' }), hour({ starFanYin: true }));
@@ -160,16 +160,14 @@ describe('§3.3 伏吟 / 反吟 per palace (S0 p131)', () => {
     expect(band(ev(), hour({ starFanYin: true })).band).toBe('good'));
   it('反吟 (star) with no rescuer → blocked', () =>
     expect(band(plainPal, hour({ starFanYin: true })).blocked).toBe(true));
-  it('门反吟 rescued → down TWO bands (更为不利)', () =>
-    expect(band(ev(), hour({ gateFanYin: true })).band).toBe('plain'));
-  it('门反吟 with no rescuer → blocked', () =>
-    expect(band(plainPal, hour({ gateFanYin: true })).blocked).toBe(true));
-  it('both rings fire → the harsher result applies', () => {
-    expect(band(ev(), hour({ starFanYin: true, gateFanYin: true })).band).toBe('plain');   // 2 > 1
-    expect(band(ev(), hour({ starFuYin: true, gateFanYin: true })).band).toBe('plain');
-    // 吉格 rescues 伏吟 but not 门反吟 → block wins
-    const r = band(ev({ door: '死门', hasQi: false, matched: [JIGE] }), hour({ starFuYin: true, gateFanYin: true }));
-    expect(r.blocked).toBe(true);
+  it('门伏吟 / 门反吟 alone have no effect (gate ring ignored, 2026-11-26)', () => {
+    expect(band(ev(), hour({ gateFuYin: true })).band).toBe('prime');
+    expect(band(ev(), hour({ gateFanYin: true })).band).toBe('prime');
+    expect(band(plainPal, hour({ gateFuYin: true, gateFanYin: true })).blocked).toBe(false);
+  });
+  it('a gate ring on top of a star ring changes nothing', () => {
+    expect(band(ev(), hour({ starFanYin: true, gateFanYin: true })).band).toBe('good');
+    expect(band(ev(), hour({ starFuYin: true, gateFanYin: true })).band).toBe('good');
   });
   it('negative: no 伏吟/反吟 → untouched 大吉', () => expect(band(ev()).band).toBe('prime'));
 });

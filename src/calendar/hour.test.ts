@@ -100,15 +100,15 @@ describe('mustAct — 伏吟/反吟 hours (spec §4)', () => {
 });
 
 describe('伏吟/反吟 labels name the ring (S0 p131)', () => {
-  it('2026-11-26 午时 庚午 is 门伏吟 (值使 死门 寄坤2 = home), not 星伏吟', () => {
+  it('2026-11-26 午时 庚午 (门伏吟 only) is not flagged 伏吟 — gate ring ignored', () => {
     const s = computeHourSummary(buildChart({ y: 2026, m: 11, d: 26, hh: 12, mm: 0, tzHours: 8 }));
-    expect(s.chartWarnings).toContain('伏吟');
-    expect(s.warningLabels['伏吟']).toBe('门伏吟');
+    expect(s.chartWarnings).not.toContain('伏吟');
+    expect(s.chartWarnings).toContain('五不遇时');
   });
-  it('2026-07-29 辰时 戊辰 (旬首仪 hour) is 星伏吟; 酉时 癸酉 is 门伏吟', () => {
+  it('2026-07-29 辰时 戊辰 (旬首仪 hour) is 星伏吟; 酉时 癸酉 (门伏吟 only) is not 伏吟', () => {
     const at = (hh: number) => computeHourSummary(buildChart({ y: 2026, m: 7, d: 29, hh, mm: 0 })).warningLabels['伏吟'];
     expect(at(8)).toBe('星伏吟');
-    expect(at(18)).toBe('门伏吟');
+    expect(at(18)).toBeUndefined();
   });
   it('every 伏吟/反吟 warning has a ring label; none without', () => {
     for (let d = 1; d <= 10; d++) for (const hh of HOUR_SAMPLE) {
