@@ -5,12 +5,12 @@ import { SummaryHeader } from './SummaryHeader.tsx';
 import { FourPillarsBar } from './FourPillarsBar.tsx';
 import { PalaceGrid } from './PalaceGrid.tsx';
 import { Chip, GradeChips } from './PalaceReasons.tsx';
-import { scoreCounts } from '../calendar/bandsV2.ts';
 import { shichenWindow } from '../calendar/bands.ts';
 import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
 import { ACTIVITY_ORDER, activityLabel } from '../calendar/data/presets.ts';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
 import { slotEvent, downloadIcs, googleCalendarUrl } from '../calendar/ics.ts';
+import { BLIND } from '../blind.ts';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -18,7 +18,7 @@ type Tab = 'hours' | 'chart';
 
 /** Right-hand day panel, v2. The 时辰总览 tab lists 12 hours described by their
  *  direction counts; the 奇门盘 tab shows the hour's board WITH per-palace
- *  score-band shading + a corner score (§6.6). */
+ *  ladder-band shading + a corner display score (§1.2, 2026-11-25). */
 export function DayDetailPanel({
   date, hours, selectedHour, onSelectHour, onPrevDay, onNextDay, onClose, onNow, activity, onSelectActivity,
   initialTab = 'hours',
@@ -43,11 +43,11 @@ export function DayDetailPanel({
   const hourStem = chart.pillars.hour.name[0] === '甲' ? chart.board.xunShouYi : chart.pillars.hour.name[0];
   const summary = cur.summary;
 
-  // best hour (most 大吉 by score, then 吉), skipping 五不遇时 — for row highlight only.
+  // best hour (most 大吉, then 吉), skipping 五不遇时 — for row highlight only.
   let bestIndex = 0, bestKey = -1;
   hours.forEach((h, i) => {
     if (h.summary.chartBlocked) return;
-    const c = scoreCounts(h.summary.palaces);
+    const c = h.summary.counts;
     const k = c.prime * 100 + c.good;
     if (k > bestKey) { bestKey = k; bestIndex = i; }
   });
@@ -124,9 +124,10 @@ export function DayDetailPanel({
 
           {/* 主客 / 急则从神 / chart warnings — direction context for the graded board */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <GradeChips grades={summary.chartGrades} />
-            {roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
+            {!BLIND && <GradeChips grades={summary.chartGrades} />}
+            {!BLIND && roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
+            {!BLIND && summary.mustAct && <span title={summary.mustAct.gloss}><Chip text={`必须此时行事 · ${summary.mustAct.text}`} color="var(--q-caution)" /></span>}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
           </div>
 

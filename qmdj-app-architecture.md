@@ -286,6 +286,8 @@ the legend can never drift from what the cells show.
 
 ### 6.8 Palace colour follows the SCORE; cell layout redesign (changed 2026-07-24)
 
+> **2026-11-25 — superseded for colour (Joe's rulings; build spec `validation-plan/QMDJ-implementation-spec.md` §1).** Colour follows the **ladder band** again (`PalaceScore.band`), and so do the hour counts, search band and ranking. The number in each box is a **display score pinned inside the band** (大吉 70–100 · 吉 40–69 · 不吉 0–39; blocked shows 不用): the cell's percentile among that band's cells over 2025–2027, per method × 用事 (`scoreCalibration.json`, rebuilt by `npm run calibrate`; a hash test fails if it goes stale). `scoreBand` / `SCORE_PRIME` / `SCORE_GOOD` are retired.
+
 Two decisions from Joe that revise §6.6 and, for display, override §3.4 of the
 palace-direction model:
 

@@ -20,7 +20,8 @@ import {
 } from './data/patterns.ts';
 import {
   isLiuYiJiXing, isSanQiRuMu, isHourStemTomb, isSanQiControlled,
-  isWuBuYuShi, palaceOfTianStem, menGongRelation, type MenGong,
+  isWuBuYuShi, palaceOfTianStem, menGongRelation, repetition, isTianXianShi,
+  type MenGong, type Repetition,
 } from './data/structural.ts';
 import { evaluateChart, reconcile, type MatchedFormation } from './evaluator.ts';
 import { ACTIVITY_PRESETS } from './data/presets.ts';
@@ -28,8 +29,10 @@ import { purposeProfile, YONGSHEN } from './profiles.ts';
 import {
   directionOf, baseFilter, hasEffectiveSanQi, type Direction, type BaseFilterResult,
 } from './direction.ts';
+import { displayScore } from './bandsV2.ts';
+import { ALL_PATTERNS } from './data/patterns.ts';
 import {
-  gateVitality, stemVitality, starVitality, seasonElement, amplitude,
+  gateVitality, stemVitality, starVitality, seasonElement, amplitude, AMPLITUDE,
   type GateVitality, type StarVitality,
 } from './strength.ts';
 
@@ -52,7 +55,9 @@ export interface PalaceScore {
   rung: Rung;
   reasons: string[];
   blocked: boolean;
-  score: number;                 // ORDERING ONLY
+  score: number;                 // raw ORDERING score — internal, never shown
+  /** 0–100 display score pinned inside the band (bandsV2.displayScore); null when blocked (不用). */
+  display: number | null;
   matched: MatchedFormation[];
   warnings: string[];
   badges: string[];
@@ -68,29 +73,44 @@ export interface PalaceScore {
 }
 
 // ─── scoring config (tuning knobs — §8.2) ─────────────────────────────────────
-const CLASS_WEIGHT = { gate: 1.0, star: 0.6, stem: 0.6, spirit: 0.3 } as const;
-const VALENCE: Record<Quality, number> = {
-  auspicious: 10, 'minor-auspicious': 5, neutral: 0, inauspicious: -10,
+// One mutable object so the metamorphic tests and the report's perturbation runs can
+// scale every knob in place. The score only ORDERS cells within a ladder band.
+export const TUNING = {
+  CLASS_WEIGHT: { gate: 1.0, star: 0.6, stem: 0.6, spirit: 0.3 },
+  VALENCE: { auspicious: 10, 'minor-auspicious': 5, neutral: 0, inauspicious: -10 } as Record<Quality, number>,
+  WONDER_VALENCE: 6,   // 三奇 intrinsic positive (no quality table for stems)
+  K_SHENG: 0.2, K_ZHI: 0.25,
+  // 门迫 on the gate. Practitioner ruling, 2026-11-25; direction per S0(p131):
+  // 吉门被迫 → 吉事不吉 (still positive, halved) · 凶门被迫 → 事更凶 (doubled).
+  PO_GOOD_GATE: 0.5, PO_BAD_GATE: 2.0,
+  // 空亡 scales the palace's own subtotal. Practitioner ruling, 2026-11-25
+  // (空亡 is not discussed in S0 pp.123–145).
+  VOID_FACTOR: 0.2,
+  // 时干入墓 anywhere this hour: the hour's own stem is buried, so the whole hour is
+  // dimmed. Hour-wide, so it is applied AFTER the 空亡 multiplier.
+  HOUR_TOMB_PENALTY: 30,
+  CONDITIONAL_GOOD: 25, CONDITIONAL_BAD: -30,   // 门吉则吉、门凶则凶 formations
 };
-const WONDER_VALENCE = 6;   // 三奇 intrinsic positive (no quality table for stems)
-const K_SHENG = 0.2, K_ZHI = 0.25, K_PO = 0.3;
-const VOID_PENALTY = 12, CONTROLLED_PENALTY = 20, BLOCKED_SCORE = -999;
-// 时干入墓: the hour's own stem (the matter acted on) is buried, so the whole hour is
-// dimmed, not just the tomb palace (blocked). Bigger than 空亡/受制: a plain 吉门 drops
-// to 不吉, only a 奇门相会 / 上格 direction stays usable.
-const HOUR_TOMB_PENALTY = 30;
+const BLOCKED_SCORE = -999;
 const WONDERS = ['乙', '丙', '丁'] as const;
 
 const TOP_TIER = new Set([
   'qinglong-fanshou', 'feiniao-diexue', 'tian-dun', 'di-dun', 'ren-dun',
   'sanqi-deshi', 'sanqi-shengdian', 'sanqi-zhiling', 'tianxian-shige',
 ]);
-// The 庚 hard family that IS encoded as patterns (§3.4 step-0b subset).
-const HARD_GE_IDS = new Set(['geng-da-ge', 'geng-xing-ge']);
+// Palace-scope pattern blocks: the full S0(p136) 庚 avoid list (年/月/日/时格, 大/小/
+// 刑格, 飞干/伏宫/飞宫格; p129) + 天网四张 (癸加癸, S0 p132 不可举事).
+export const HARD_GE_IDS: ReadonlySet<string> = new Set([
+  'geng-da-ge', 'geng-xing-ge', 'geng-xiao-ge',
+  'sui-ge', 'yue-ge', 'ri-ge', 'shi-ge',
+  'fugong-ge', 'feigan-ge', 'feigong-ge',
+  'tianwang-sizhang',
+]);
 const GOOD_SPIRITS = ['太阴', '六合', '九地', '九天'];
 
 // ─── the per-palace facts assignBand reads ───────────────────────────────────
-interface PalaceEval {
+/** The per-palace facts assignBand reads (exported for the ladder tests). */
+export interface PalaceEval {
   palace: number;
   door: string | null;
   hasQi: boolean;
@@ -102,7 +122,8 @@ interface PalaceEval {
   shiGanRuMu: boolean;   // 时干入墓 landing in THIS palace
   hourTomb: boolean;     // 时干入墓 anywhere this hour (hour-wide penalty)
   xing: boolean;         // 刑格
-  hardGe: boolean;       // a HARD 庚-格 present
+  controlled: boolean;   // 三奇受制 (S0 p130 definition)
+  hardGe: string[];      // names of the HARD 庚-格 / 天网四张 present
   primaryStar: Star | null;
   spirit: string | null;
   strength: PalaceScore['strength'];
@@ -118,34 +139,77 @@ const demote = (b: Band): Band => (b === 'prime' ? 'good' : 'plain');
 // ─── §3.4 assignBand — the rule ladder. Does NOT read the score. ─────────────
 interface BandResult { band: Band; rung: Rung; blocked: boolean; reasons: string[]; badges: string[] }
 
-function assignBand(ev: PalaceEval, wuBuYuShi: boolean, profile: ScoreProfile): BandResult {
+/** Hour-wide facts the ladder reads. */
+export interface HourCtx { wuBuYuShi: boolean; rep: Repetition; tianXian: boolean; xunShouYi: string }
+
+const BLOCK = (reason: string): BandResult =>
+  ({ band: 'plain', rung: '凶方', blocked: true, reasons: [`不可用 — ${reason}`], badges: [] });
+
+/** §3.3 伏吟/反吟 for one palace: 'block', a number of bands to drop, or 0. S0(p131). */
+function repetitionVerdict(
+  p: Palace, hour: HourCtx, rescue: { gate: boolean; qi: boolean; jiGe: boolean },
+): { block: string | null; drop: number; reason: string | null } {
+  const { rep } = hour;
+  const out = { block: null as string | null, drop: 0, reason: null as string | null };
+  const harsher = (block: string | null, drop: number, reason: string) => {
+    if (out.block) return;
+    if (block) { out.block = block; return; }
+    if (drop > out.drop) { out.drop = drop; out.reason = reason; }
+  };
+  if (rep.fuYin && !hour.tianXian) {            // 天显时: 伏吟一般不凶 (p125, p131)
+    // 最凶 — default reading: the palaces where these sit (p131).
+    const worst = (rep.starFuYin && p.palace === 1 && p.stars.includes('天蓬'))
+      || (rep.gateFuYin && p.palace === 2 && p.gate === '死门')
+      || (hour.xunShouYi === '辛' && p.tianPanStems.includes('辛') && p.diPanStem === '辛');
+    if (worst) harsher('伏吟最凶', 0, '');
+    else if (rescue.gate || rescue.jiGe) harsher(null, 1, '伏吟 — 遇吉门吉格为有救，降一等');
+    else harsher('伏吟无救', 0, '');
+  }
+  if (rep.starFanYin) {
+    if (rescue.qi || rescue.gate) harsher(null, 1, '反吟 — 遇三奇或吉门为有救，降一等');
+    else harsher('反吟无救', 0, '');
+  }
+  if (rep.gateFanYin) {
+    if (rescue.qi || rescue.gate) harsher(null, 2, '门反吟 — 更为不利，降两等');
+    else harsher('门反吟无救', 0, '');
+  }
+  return out;
+}
+
+export function assignBand(ev: PalaceEval, p: Palace, hour: HourCtx, profile: ScoreProfile): BandResult {
   const reasons: string[] = [];
   const badges: string[] = [];
 
   // STEP 0a — 五不遇时 (chart scope) — the whole 时辰 is unusable.
-  if (wuBuYuShi) {
+  if (hour.wuBuYuShi) {
     return { band: 'plain', rung: '凶方', blocked: true,
       reasons: ['五不遇时 — 时干剋日干，择时最忌，此时辰不用'], badges: [] };
   }
-  // STEP 0b — palace-scope hard exclusions.
+  // STEP 0b — palace-scope blocks. Nothing rescues these (S0 p129, p130, p132, p135, p136).
   const hard: string[] = [];
   if (ev.jiXing) hard.push('六仪击刑');
   if (ev.ruMu) hard.push('三奇入墓');
+  if (ev.controlled) hard.push('三奇受制');
   if (ev.shiGanRuMu) hard.push('时干入墓');
-  if (ev.hardGe) hard.push('凶格(大/刑格)');
-  if (hard.length) {
-    return { band: 'plain', rung: '凶方', blocked: true,
-      reasons: [`不可用 — ${hard.join('、')}`], badges: [] };
-  }
-
-  // STEP 1 — THE LADDER.
+  hard.push(...ev.hardGe);
   const goodGates: readonly Door[] = profile.kind === 'purpose'
     ? ACTIVITY_PRESETS[profile.activity].goodGates
     : GOOD_GATES;
+  // 凶门被迫 — 事更凶，不可用 (S0 p131 direction; block is a practitioner ruling, 2026-11-25).
+  // 凶门 = an inauspicious gate that is not one of this profile's good gates.
+  if (ev.menGong === '迫' && ev.door != null && GATES[ev.door as Door]?.quality === 'inauspicious'
+      && !goodGates.includes(ev.door as Door)) hard.push('凶门被迫');
+  if (hard.length) return BLOCK(hard.join('、'));
+
+  // STEP 1 — THE LADDER.
   const hasGate = ev.door != null && goodGates.includes(ev.door as Door);
   const hasQi = ev.hasQi;
   const hasJiGe = ev.matched.some(isJiGe);
   const hasXiongGe = ev.matched.some(isXiongGe);
+
+  // STEP 0c — 伏吟/反吟, per palace (needs the step-1 rescuers, so it sits here).
+  const fy = repetitionVerdict(p, hour, { gate: hasGate, qi: hasQi, jiGe: hasJiGe });
+  if (fy.block) return BLOCK(fy.block);
 
   let rung: Rung, band: Band;
   if (hasQi && hasGate) { rung = '奇门相会'; band = 'prime'; reasons.push('三奇与三吉门相会 — 最佳的方位'); badges.push('奇门相会'); }
@@ -155,16 +219,14 @@ function assignBand(ev: PalaceEval, wuBuYuShi: boolean, profile: ScoreProfile): 
   else { rung = '凶方'; band = 'plain'; reasons.push('不得奇又不得吉门'); }
 
   const vital = ['旺', '相'].includes(ev.strength.gate ?? '');
-  const notPo = ev.menGong !== '迫';
   const cleanOfFour = ev.menGong !== '迫' && !ev.ruMu && !ev.jiXing && !ev.xing;
 
-  // STEP 2 — qualify 'prime' (得时得地…才是真正的吉).
+  // STEP 2 — qualify 'prime' (得时得地…才是真正的吉). 门迫 and 空亡 are NOT checked
+  // here: each demotes once, at step 4 (2026-11-25 — they used to drop twice).
   if (band === 'prime') {
-    if (!(vital && notPo && !ev.kongWang && !hasXiongGe)) {
+    if (!(vital && !hasXiongGe)) {
       band = 'good';
       if (!vital) reasons.push('吉门失气 — 未得时得地，吉门也就不吉了');
-      if (!notPo) reasons.push('门迫 — 吉门剋宫，吉不就');
-      if (ev.kongWang) reasons.push('空亡 — 事不落实');
       if (hasXiongGe) reasons.push('同宫见凶格');
     } else {
       badges.push('得时得地');
@@ -184,12 +246,23 @@ function assignBand(ev: PalaceEval, wuBuYuShi: boolean, profile: ScoreProfile): 
     reasons.push('吉门得时得地，吉神相助');
   }
 
-  // STEP 4 — demotions (ordered; each drops at most one band).
+  // STEP 4 — demotions; each cause drops one band, once. They stack (default reading,
+  // 2026-11-25): a 大吉 rung with both 门迫 and 空亡 ends at 不吉.
   if (hasGate && ['休', '囚', '死'].includes(ev.strength.gate ?? '')) {
     band = demote(band); reasons.push('吉门逢休囚 — 无力');
   }
-  if (hasGate && ev.menGong === '迫' && band !== 'plain') {
-    band = demote(band); reasons.push('门迫');
+  // S0(p131) 吉门被迫吉不就. Still usable, just weaker: 大吉 → 吉, never below 吉
+  // (practitioner ruling, 2026-11-25).
+  if (hasGate && ev.menGong === '迫') {
+    if (band === 'prime') band = 'good';
+    reasons.push('门迫 — 吉门剋宫，吉不就（仍可用）');
+  }
+  if (ev.kongWang) {                      // practitioner ruling, 2026-11-25
+    band = demote(band); reasons.push('空亡 — 事不落实');
+  }
+  if (fy.drop) {                          // 伏吟/反吟 有救 (S0 p131)
+    for (let i = 0; i < fy.drop; i++) band = demote(band);
+    reasons.push(fy.reason!);
   }
   if (hasXiongGe) { band = 'plain'; reasons.push('见凶格 — 不可用'); }
 
@@ -208,21 +281,22 @@ function assignBand(ev: PalaceEval, wuBuYuShi: boolean, profile: ScoreProfile): 
 function applyMenGong(v: number, rel: MenGong): number {
   switch (rel) {
     case '和':
-    case '义': return v * (1 + K_SHENG);
-    case '制': return v * (1 - K_ZHI);
-    case '迫': return v > 0 ? v * (1 - K_PO) : v * (1 + K_PO);
+    case '义': return v * (1 + TUNING.K_SHENG);
+    case '制': return v * (1 - TUNING.K_ZHI);
+    case '迫': return v > 0 ? v * TUNING.PO_GOOD_GATE : v * TUNING.PO_BAD_GATE;   // 0 stays 0
     default: return v;
   }
 }
 function formationContribution(f: MatchedFormation, gate: string | null): number {
   if (f.tier === 'conditional') {
-    return gate != null && GOOD_GATES.includes(gate as Door) ? 25 : -30;
+    return gate != null && GOOD_GATES.includes(gate as Door) ? TUNING.CONDITIONAL_GOOD : TUNING.CONDITIONAL_BAD;
   }
   return TIER_WEIGHTS[f.tier];
 }
-function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number {
+export function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number {
   // Purpose mode: derive 用神 + class emphasis; general mode leaves all ×1 / no bonus.
   const pp = profile.kind === 'purpose' ? purposeProfile(profile.activity) : null;
+  const { CLASS_WEIGHT, VALENCE, WONDER_VALENCE } = TUNING;
   const wGate = CLASS_WEIGHT.gate * (pp?.classEmphasis.gate ?? 1);
   const wStar = CLASS_WEIGHT.star * (pp?.classEmphasis.star ?? 1);
   const wStem = CLASS_WEIGHT.stem * (pp?.classEmphasis.stem ?? 1);
@@ -244,9 +318,6 @@ function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number
     s += VALENCE[SPIRITS[p.spirit as keyof typeof SPIRITS].quality] * wSpirit;
   }
   for (const f of ev.matched) s += formationContribution(f, p.gate); // NOT amplitude-scaled
-  if (ev.kongWang) s -= VOID_PENALTY;
-  if (isSanQiControlled(p)) s -= CONTROLLED_PENALTY;
-  if (ev.hourTomb) s -= HOUR_TOMB_PENALTY;
 
   // §4.2 step 9 — 用神 boost: reward palaces carrying this activity's 用神.
   if (pp) {
@@ -254,6 +325,8 @@ function orderingScore(p: Palace, ev: PalaceEval, profile: ScoreProfile): number
     if (p.spirit && pp.yongShen.spirits.includes(p.spirit as Spirit)) s += YONGSHEN.spirit;
     for (const f of ev.matched) if (pp.boostFormations.has(f.id)) s += YONGSHEN.formation;
   }
+  if (ev.kongWang) s *= TUNING.VOID_FACTOR;          // the palace's own subtotal only
+  if (ev.hourTomb) s -= TUNING.HOUR_TOMB_PENALTY;    // hour-wide: not scaled by 空亡
   return Math.round(s * 10) / 10;
 }
 
@@ -276,7 +349,8 @@ function buildEval(chart: Chart, p: Palace, matched: MatchedFormation[], profile
     shiGanRuMu: isHourStemTomb(chart) && palaceOfTianStem(chart.board, hourStem) === p.palace,
     hourTomb: isHourStemTomb(chart),
     xing: matched.some((m) => m.id === 'geng-xing-ge'),
-    hardGe: matched.some((m) => HARD_GE_IDS.has(m.id)),
+    controlled: isSanQiControlled(p),
+    hardGe: [...new Set(matched.filter((m) => HARD_GE_IDS.has(m.id)).map((m) => m.name))],
     primaryStar,
     spirit: p.spirit,
     strength: {
@@ -315,16 +389,16 @@ export function evaluatePalace(
   if (p.palace === 5) {
     return {
       palace: 5, direction: null, band: 'plain', rung: '凶方', reasons: [], blocked: false,
-      score: 0, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
+      score: 0, display: null, matched: [], warnings: [], badges: [], grades: [], baseFilter: '凶方',
       strength: { gate: null, star: null, spirit: null, stems: {} },
     };
   }
   const ev = buildEval(chart, p, matched, profile);
-  const wuBuYuShi = isWuBuYuShi(STEMS[chart.pillars.day.stem], STEMS[chart.pillars.hour.stem]);
+  const hour = hourCtx(chart);
   const goodGates: readonly Door[] = profile.kind === 'purpose'
     ? ACTIVITY_PRESETS[profile.activity].goodGates : GOOD_GATES;
 
-  const { band, rung, blocked, reasons, badges } = assignBand(ev, wuBuYuShi, profile);
+  const { band, rung, blocked, reasons, badges } = assignBand(ev, p, hour, profile);
 
   const warnings: string[] = [];
   if (ev.kongWang) warnings.push('空亡');
@@ -332,21 +406,51 @@ export function evaluatePalace(
   if (ev.ruMu) warnings.push('三奇入墓');
   if (ev.jiXing) warnings.push('六仪击刑');
   if (ev.shiGanRuMu) warnings.push('时干入墓');
-  if (isSanQiControlled(p)) warnings.push('三奇受制');
+  if (ev.controlled) warnings.push('三奇受制');
 
   // positive badges beyond the ladder's own (§6.4)
   if (ev.menGong === '制' && p.gate && !GOOD_GATES.includes(p.gate as Door)) badges.push('凶不起');
   if (matched.some((m) => m.id === 'qinglong-taozou' || m.id === 'zhuque-toujiang')) badges.push('为主不害');
 
   const score = blocked ? BLOCKED_SCORE : orderingScore(p, ev, profile);
+  const display = blocked ? null
+    : displayScore(score, band, chart.input?.method ?? 'zhirun', profileKey(profile));
 
   return {
     palace: p.palace,
     direction: directionOf(p.palace),
-    band, rung, reasons, blocked, score, matched, warnings, badges,
+    band, rung, reasons, blocked, score, display, matched, warnings, badges,
     grades: gradesFor(p, ev, matched),
     baseFilter: baseFilter(p, matched, goodGates),
     strength: ev.strength,
+  };
+}
+
+/** Calibration profile key: 'general' or the 用事 id. */
+export const profileKey = (profile: ScoreProfile): string =>
+  profile.kind === 'purpose' ? profile.activity : 'general';
+
+/** Hash of every constant that moves a band or a raw score. scoreCalibration.json
+ *  stores it; a test fails when they differ, so the table cannot go stale silently. */
+export function scoringHash(): string {
+  const text = JSON.stringify({
+    TUNING, TOP_TIER: [...TOP_TIER], HARD_GE_IDS: [...HARD_GE_IDS], GOOD_SPIRITS,
+    AMPLITUDE, YONGSHEN, TIER_WEIGHTS, GATES, STARS, SPIRITS,
+    PATTERNS: ALL_PATTERNS.map((r) => [r.id, r.tier, r.scope, r.when]),
+    PRESETS: ACTIVITY_PRESETS,
+    EMPHASIS: Object.keys(ACTIVITY_PRESETS).map((a) => purposeProfile(a as ApplicationTag).classEmphasis),
+  });
+  let h = 0x811c9dc5;                                   // FNV-1a, 32-bit
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+export function hourCtx(chart: Chart): HourCtx {
+  return {
+    wuBuYuShi: isWuBuYuShi(STEMS[chart.pillars.day.stem], chart.pillars.hour.name),
+    rep: repetition(chart.board),
+    tianXian: isTianXianShi(chart),
+    xunShouYi: chart.board.xunShouYi,
   };
 }
 

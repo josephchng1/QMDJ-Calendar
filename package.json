@@ -1,7 +1,7 @@
 {
   "name": "qmdj-calendar",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "奇门遁甲 daily calendar — find good dates & hours. Vendored Zhirun engine, computed client-side in a Web Worker.",
   "scripts": {
@@ -13,7 +13,10 @@
     "test:fixtures": "node tooling/validate-fixtures.mjs",
     "test:watch": "vitest",
     "test:golden": "vitest run packages/engine/tests/golden",
-    "test:engine": "node --experimental-strip-types packages/engine/tests/reference/run.ts"
+    "test:engine": "node --experimental-strip-types packages/engine/tests/reference/run.ts",
+    "calibrate": "node --experimental-strip-types tooling/build-score-calibration.ts",
+    "gold:export": "node --experimental-strip-types tooling/export-gold-cases.ts",
+    "gold:score": "node --experimental-strip-types tooling/score-gold.ts"
   },
   "dependencies": {
     "react": "^19.0.0",

@@ -8,7 +8,7 @@
 // Severity (§7.10) — the scorer, not this file, applies the consequences:
 //   ABSOLUTE VETO:            六仪击刑
 //   STRONG VETO (nullifying): 三奇入墓
-//   STRONG DEFAULT-EXCLUDE:   五不遇时, 时干入墓, 三奇受制
+//   BLOCK (ladder step 0):    五不遇时, 时干入墓, 三奇受制 (2026-11-25)
 //   HEAVY PENALTY:            反吟, 伏吟(unless 天显时), 空亡, 门迫(凶门)
 //   MITIGATOR (on a 凶门):     宫制 (凶不起)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,22 +37,22 @@ export const controls = (a: Element, b: Element): boolean => KE[a] === b;
 /** does `a` 生 `b`? (generate) */
 export const generates = (a: Element, b: Element): boolean => SHENG[a] === b;
 
-const stemIdx = (s: string): number => STEMS.indexOf(s);
-const isYangStem = (s: string): boolean => stemIdx(s) % 2 === 0; // 甲丙戊庚壬 = yang
 const WONDERS = ['乙', '丙', '丁'] as const;
 /** 沖 (opposite) palace: 坎离/坤艮/震兑/巽乾. 中5 has none. */
 export const chong = (p: number): number | null =>
   ({ 1: 9, 9: 1, 2: 8, 8: 2, 3: 7, 7: 3, 4: 6, 6: 4 } as Record<number, number>)[p] ?? null;
 
-// ─── §7.1 五不遇时 — strong default-exclude (时干 克 日干, same polarity) ───
+// ─── §7.1 五不遇时 — whole-hour block. The ten-entry table, S0(p133, p135). ───
+// Looked up by day stem against the hour GANZHI: exactly one 时辰 per day stem, so
+// 1 in 12 over any whole 10-day cycle. (The old 时干克日干 element rule also caught
+// 己日乙亥 and 庚日丙戌 — not in the table; dropped per Joe, 2026-11-25.)
 export const WU_BU_YU_TABLE: Record<string, string> = {
   甲: '庚午时', 乙: '辛巳时', 丙: '壬辰时', 丁: '癸卯时', 戊: '甲寅时',
   己: '乙丑时', 庚: '丙子时', 辛: '丁酉时', 壬: '戊申时', 癸: '己未时',
 };
-export function isWuBuYuShi(dayStem: string, hourStem: string): boolean {
-  const de = STEM_ELEM[dayStem], he = STEM_ELEM[hourStem];
-  if (!de || !he) return false;
-  return controls(he, de) && isYangStem(hourStem) === isYangStem(dayStem);
+/** `hourGanzhi` is the hour pillar's name, e.g. '乙丑'. */
+export function isWuBuYuShi(dayStem: string, hourGanzhi: string): boolean {
+  return WU_BU_YU_TABLE[dayStem] === hourGanzhi + '时';
 }
 
 // ─── §7.2 六仪击刑 — ABSOLUTE VETO (a 仪 in a palace it 刑s) ───
@@ -130,30 +130,37 @@ export function menGongRelation(door: string, p: number): MenGong {
 export const isMenPo = (door: string, p: number): boolean => menGongRelation(door, p) === '迫';
 export const isGongPo = (door: string, p: number): boolean => menGongRelation(door, p) === '制';
 
-// ─── §7.6 伏吟 / 反吟 — 值符(天盘) returns to / opposes its home palace ───
-// A star's home palace = its Luoshu number.
+// ─── §7.6 伏吟 / 反吟 — S0(p131): 星伏吟、门伏吟、值符伏吟 (and the 反吟 trio) ───
+// Two rigid rings rotate independently: the star ring (stars + 天盘 stems, led by the
+// 值符) and the gate ring (led by the 值使). Each is checked on its own; the hour is
+// 伏吟 if EITHER ring sits at home, 反吟 if either lands on the 对冲 palace.
+// (Supersedes the 2026-07-29 star-only reading: p131 defines 门伏吟/门反吟 and singles
+// out 门反吟 as 更为不利 — Joe, 2026-11-25.)
 const STAR_HOME: Record<string, number> = {
   天蓬: 1, 天芮: 2, 天冲: 3, 天辅: 4, 天禽: 5, 天心: 6, 天柱: 7, 天任: 8, 天英: 9,
 };
+export const GATE_HOME: Record<string, number> = {
+  休门: 1, 死门: 2, 伤门: 3, 杜门: 4, 开门: 6, 惊门: 7, 生门: 8, 景门: 9,
+};
 export interface Repetition {
-  fuYin: boolean; fanYin: boolean;
-  anyFuYin: boolean; anyFanYin: boolean;   // kept for existing callers
+  starFuYin: boolean; starFanYin: boolean;
+  gateFuYin: boolean; gateFanYin: boolean;
+  fuYin: boolean; fanYin: boolean;         // either ring
+  anyFuYin: boolean; anyFanYin: boolean;   // kept for existing callers (= fuYin / fanYin)
 }
-// 伏吟 = the 值符 star returns to its 地盘 home palace (天盘 coincides with 地盘,
-// ring rotation 0). 反吟 = it lands on the 对冲 palace (180° rotation). The star
-// ring is rigid, so the 值符 alone decides it. The 值使 GATE ring is a SEPARATE
-// rotation and must NOT be counted — doing so over-fired 伏吟/反吟 on hours where
-// only the gate ring aligned (validated against 2026-07-29: 未/酉 were false, 子
-// was a missed 伏吟). 甲-hours (天显时) genuinely ARE 伏吟 — 值符归本位 — so they
-// are reported, not suppressed; their auspicious valence is a scoring concern.
 export function repetition(board: Board): Repetition {
-  const originRaw = STAR_HOME[board.zhiFuStar];
-  const home = originRaw === 5 ? 2 : originRaw;        // 禽 rides with 芮 (palace 2)
-  const zf = board.zhiFuDisplayPalace;
-  const opp = home != null ? chong(home) : null;
-  const fuYin = home != null && zf === home;
-  const fanYin = opp != null && zf === opp;
-  return { fuYin, fanYin, anyFuYin: fuYin, anyFanYin: fanYin };
+  const ring = (homeRaw: number | undefined, at: number) => {
+    const home = homeRaw === 5 ? 2 : homeRaw;            // 中5 rides with 坤2
+    const opp = home != null ? chong(home) : null;
+    return { fu: home != null && at === home, fan: opp != null && at === opp };
+  };
+  const star = ring(STAR_HOME[board.zhiFuStar], board.zhiFuDisplayPalace);
+  const gate = ring(GATE_HOME[board.zhiShiGate], board.zhiShiDisplayPalace);
+  const fuYin = star.fu || gate.fu, fanYin = star.fan || gate.fan;
+  return {
+    starFuYin: star.fu, starFanYin: star.fan, gateFuYin: gate.fu, gateFanYin: gate.fan,
+    fuYin, fanYin, anyFuYin: fuYin, anyFanYin: fanYin,
+  };
 }
 
 // ─── §6 天显时 — hour pillar stem 甲: 伏吟 exception, flips auspicious ───

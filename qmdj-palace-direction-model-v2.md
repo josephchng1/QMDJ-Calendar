@@ -257,6 +257,12 @@ function applyMenGong(v: number, rel: MenGongRelation | null): number {
 
 ### 3.4 ⭐ Band assignment — a rule ladder, not a threshold. **Resolves R4.**
 
+> **2026-11-25 rulings (Joe) — implemented on branch `scoring-v3`; see `validation-plan/QMDJ-implementation-spec.md` §3.** The ladder band is the only band shown.
+> - **Blocks (不用):** 五不遇时 by the ten-entry table on the hour ganzhi (p133/135); 六仪击刑; 三奇入墓; **三奇受制** (p130); **天网四张** 癸加癸 (p132); 时干入墓 (that palace); the full p136 庚 list incl. 小格, 岁格, 伏宫/飞干/飞宫格 and new **月格/日格/时格** (p129).
+> - **Demotions:** 门迫 (on the profile's good gate) and 空亡 drop one band each, once, at step 4; removed from the step-2 qualifiers. They stack. 吉门被迫 never drops below 吉 (still usable); **凶门被迫 blocks** (事更凶，不可用).
+> - **伏吟/反吟 per palace (p131):** star ring and gate ring checked separately. 天显时 伏吟 → no effect; worst 伏吟 (天蓬加天蓬, 死门加死门, 甲午辛加甲午辛) → block; 伏吟 with 吉门/吉格 → −1; 反吟 with 三奇/吉门 → −1; 门反吟 with 三奇/吉门 → −2; no rescuer → block; both rings → the harsher.
+> - **Magnitudes (score only):** 门迫 ×0.5 on a 吉门, ×2.0 on a 凶门; 空亡 ×0.2 on the palace subtotal (hour-wide 时干入墓 not scaled). Practitioner rulings.
+
 **The band is decided by classical rules, not by where a number falls.** S0(pp.135–140) states the complete selection ladder plus its qualifiers and disqualifiers. Encoding it directly removes the calibration problem entirely: there is no percentage to guess, no distribution to fit, and every band carries a reason traceable to a page.
 
 **The score's job changes.** It no longer determines the band. It **orders cells within a band** for ranking. That confines every engineering parameter (§8.2) to tie-breaking, where being imprecise costs nothing.

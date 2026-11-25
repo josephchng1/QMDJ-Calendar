@@ -5,7 +5,7 @@ import { useSearch } from '../hooks/useSearch.ts';
 import { ACTIVITY_ORDER, ACTIVITY_PRESETS } from '../calendar/data/presets.ts';
 import { ALL_PATTERNS } from '../calendar/data/patterns.ts';
 import { shichenWindow } from '../calendar/bands.ts';
-import { V2_BAND_COLOR, V2_BAND_LABEL, SCORE_PRIME } from '../calendar/bandsV2.ts';
+import { V2_BAND_COLOR, V2_BAND_LABEL } from '../calendar/bandsV2.ts';
 import { DIRECTION_LABEL } from '../calendar/direction.ts';
 import { GradeChips } from './PalaceReasons.tsx';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
@@ -124,7 +124,7 @@ export function SearchView({ options, onOpenSlot, onReset }: {
                              onAdd={(id) => addTo(setAvoid, id)} onRemove={(id) => removeFrom(setAvoid, id)} />
             <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-dim)' }}>
               最低分 {minScore}
-              <input type="range" min={0} max={SCORE_PRIME * 2} step={8} value={minScore}
+              <input type="range" min={0} max={100} step={5} value={minScore}
                      onChange={(e) => setMinScore(Number(e.target.value))} className="flex-1" />
             </label>
             <button className="seg rounded-lg px-2.5 py-1 text-xs self-start" data-active={allowWuBuYu}
@@ -181,7 +181,7 @@ function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onCl
       </span>
       <span className="text-sm gold">{slot.hourGanzhi}</span>
       <span className="text-xs font-medium" style={{ color: c }}>
-        {`${slot.direction ? DIRECTION_LABEL[slot.direction] + '方 ' : ''}${slot.blocked ? '不用' : `${V2_BAND_LABEL[slot.band]} ${Math.round(slot.score)}`}`}
+        {`${slot.direction ? DIRECTION_LABEL[slot.direction] + '方 ' : ''}${slot.blocked ? '不用' : `${V2_BAND_LABEL[slot.band]} ${slot.display}`}`}
       </span>
       <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
         {/* same 上格/下格 chips the board shows for this direction (palace) + the chart */}

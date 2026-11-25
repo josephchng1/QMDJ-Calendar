@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { BLIND } from './blind.ts';
 import { version } from '../package.json';
 import type { CalendarOptions } from './calendar/summary.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
@@ -113,6 +114,7 @@ export default function App() {
     if (ui.jiXingPlate === 'tian') p.set('jx', 'tian');
     if (ui.activity) p.set('act', ui.activity);
     p.set('tz', String(ui.tz));
+    if (BLIND) p.set('blind', '1');
     history.replaceState(null, '', `?${p.toString()}`);
   }, [ui]);
 
@@ -225,8 +227,9 @@ export default function App() {
 
             <Legend />
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
-              日历只作选日，不显示当日总评。点选任一日期，右侧奇门盘按分数为各方位上色
-              （金＝大吉、青＝吉、无色＝不吉），颜色与分数一致；点格可见经典定级依据（rung·reasons）。
+              日历只作选日，不显示当日总评。点选任一日期，右侧奇门盘按经典定级为各方位上色
+              （金＝大吉、青＝吉、无色＝不吉）；格内数字为级内相对分（大吉70–100、吉40–69、不吉0–39），
+              不用之方不给分。点格可见定级依据（rung·reasons）。
             </p>
           </div>
 

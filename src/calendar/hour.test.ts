@@ -22,7 +22,7 @@ describe('hourRoleFavour — 五阳时利客 / 五阴时利主', () => {
     for (let d = 1; d <= 20; d++) for (const hh of HOUR_SAMPLE) {
       const s = computeHourSummary(buildChart({ y: 2026, m: 3, d, hh, mm: 0 }));
       if (s.chartWarnings.includes('伏吟')) { fu++; expect(s.hourRoleFavour).not.toBe('mover'); }
-      const shown = s.palaces.filter((p) => p.palace !== 5 && !p.blocked && p.score >= 16).length;
+      const shown = s.palaces.filter((p) => p.palace !== 5 && !p.blocked && p.band !== 'plain').length;
       if (s.chartBlocked || !shown) { poor++; expect(s.hourRoleFavour).toBeNull(); }
     }
     expect(fu).toBeGreaterThan(0);
@@ -80,5 +80,21 @@ describe('peakCellOf — the day is a PROJECTION, not a mean', () => {
   it('has no peak when there is nothing to rank', () => {
     expect(peakCellOf([])).toBeNull();
     expect(peakCellOf([{ chartBlocked: true, palaces: [] }])).toBeNull();
+  });
+});
+
+describe('mustAct — 伏吟/反吟 hours (spec §4)', () => {
+  it('伏吟 → host, 反吟 → mover, always with 急则从神; none otherwise', () => {
+    let fu = 0, fan = 0;
+    for (let d = 1; d <= 20; d++) for (const hh of HOUR_SAMPLE) {
+      const s = computeHourSummary(buildChart({ y: 2026, m: 3, d, hh, mm: 0 }));
+      const w = s.chartWarnings;
+      if (w.includes('伏吟')) { fu++; expect(s.mustAct?.role).toBe('host'); }
+      else if (w.includes('反吟')) { fan++; expect(s.mustAct?.role).toBe('mover'); }
+      else expect(s.mustAct).toBeNull();
+      if (s.mustAct) expect(s.mustAct.emergencyDirections).toEqual(s.emergencyDirections);
+    }
+    expect(fu).toBeGreaterThan(0);
+    expect(fan).toBeGreaterThan(0);
   });
 });

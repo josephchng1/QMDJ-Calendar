@@ -1,7 +1,7 @@
 import type { Palace } from '../types.ts';
 import type { PalaceScore } from '../calendar/palace.ts';
 import { gateColor, starColor, spiritColor, stemColor } from '../qmdata.ts';
-import { V2_BAND_COLOR, scoreBand, bandTint } from '../calendar/bandsV2.ts';
+import { V2_BAND_COLOR, bandTint } from '../calendar/bandsV2.ts';
 import { stemMarks, isMenPo } from '../calendar/data/structural.ts';
 import { useSettings } from '../settings.ts';
 
@@ -79,8 +79,8 @@ export function PalaceCell({
     );
   }
 
-  // display band (colour) follows the score
-  const band = score ? scoreBand(score.score, score.blocked) : 'plain';
+  // one verdict: colour is the ladder band; the number is the display score pinned inside it
+  const band = score ? score.band : 'plain';
   const blocked = !!score?.blocked;
   const bandColor = V2_BAND_COLOR[band];
 
@@ -104,7 +104,7 @@ export function PalaceCell({
       <div className="flex items-start justify-between leading-none">
         {score
           ? <span className="text-[11px] tabular-nums font-medium" style={{ color: bandColor }}>
-              {blocked ? '✕' : Math.round(score.score)}
+              {blocked ? '不用' : score.display}
             </span>
           : <span />}
         <div className="flex gap-1">
