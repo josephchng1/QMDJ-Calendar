@@ -1,5 +1,6 @@
 import type { HourSummary } from '../calendar/hour.ts';
 import { shichenWindow } from '../calendar/bands.ts';
+import { BLIND } from '../blind.ts';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -16,9 +17,9 @@ export function HourRow({
   isActive: boolean;
   onClick: () => void;
 }) {
-  const blocked = summary.chartBlocked;
+  const blocked = !BLIND && summary.chartBlocked;
   const { prime, good } = summary.counts;
-  const role = summary.hourRoleFavour && (summary.hourRoleFavour === 'mover' ? '客' : '主');
+  const role = !BLIND && summary.hourRoleFavour && (summary.hourRoleFavour === 'mover' ? '客' : '主');
 
   return (
     <button
@@ -39,7 +40,7 @@ export function HourRow({
       </span>
       <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{ganzhi}</span>
 
-      {blocked ? (
+      {BLIND ? null : blocked ? (
         <span className="text-xs" style={{ color: 'var(--q-bad)' }}>五不遇时 · 不用</span>
       ) : (
         <span className="flex items-center gap-2 text-xs tabular-nums">
@@ -59,7 +60,7 @@ export function HourRow({
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>
         ))}
-        {isBest && !blocked && <span className="text-[10px]" style={{ color: 'var(--gold)' }}>★ 今日最佳</span>}
+        {isBest && !blocked && !BLIND && <span className="text-[10px]" style={{ color: 'var(--gold)' }}>★ 今日最佳</span>}
       </div>
     </button>
   );

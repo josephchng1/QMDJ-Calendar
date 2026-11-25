@@ -3,21 +3,23 @@ import type { Board } from '../types.ts';
 import type { PalaceScore } from '../calendar/palace.ts';
 import { PalaceCell } from './PalaceCell.tsx';
 import { PalaceReasons } from './PalaceReasons.tsx';
+import { BLIND } from '../blind.ts';
 
 // Classic display order 4-9-2 / 3-5-7 / 8-1-6 over the flat palaces[0..8] array.
 const ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
 
 // The 奇门盘 for one 时辰. When `scores` (the hour's PalaceScore[], index-ordered)
-// is supplied, each cell is tinted by its SCORE band + shows a corner score, and
+// is supplied, each cell is tinted by its ladder band + shows a corner display score, and
 // clicking a palace reveals its rule-ladder reasons (§6.6).
 export function PalaceGrid({
-  board, scores, hourStem,
+  board, scores: scored, hourStem,
 }: {
   board: Board;
   scores?: PalaceScore[];
   hourStem?: string;
 }) {
   const [focus, setFocus] = useState<number | null>(null);
+  const scores = BLIND ? undefined : scored;   // blind=1: the bare chart
   const focusPs = focus != null && scores ? scores[focus - 1] : null;
 
   return (

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { BLIND } from './blind.ts';
 import { version } from '../package.json';
 import type { CalendarOptions } from './calendar/summary.ts';
 import { MonthGrid } from './components/MonthGrid.tsx';
@@ -113,6 +114,7 @@ export default function App() {
     if (ui.jiXingPlate === 'tian') p.set('jx', 'tian');
     if (ui.activity) p.set('act', ui.activity);
     p.set('tz', String(ui.tz));
+    if (BLIND) p.set('blind', '1');
     history.replaceState(null, '', `?${p.toString()}`);
   }, [ui]);
 

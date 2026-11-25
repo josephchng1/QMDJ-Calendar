@@ -10,6 +10,7 @@ import { directionOf, DIRECTION_LABEL } from '../calendar/direction.ts';
 import { ACTIVITY_ORDER, activityLabel } from '../calendar/data/presets.ts';
 import type { ApplicationTag } from '../calendar/data/patterns.ts';
 import { slotEvent, downloadIcs, googleCalendarUrl } from '../calendar/ics.ts';
+import { BLIND } from '../blind.ts';
 
 const BRANCH = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -123,10 +124,10 @@ export function DayDetailPanel({
 
           {/* 主客 / 急则从神 / chart warnings — direction context for the graded board */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <GradeChips grades={summary.chartGrades} />
-            {roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
+            {!BLIND && <GradeChips grades={summary.chartGrades} />}
+            {!BLIND && roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
-            {summary.mustAct && <span title={summary.mustAct.gloss}><Chip text={`必须此时行事 · ${summary.mustAct.text}`} color="var(--q-caution)" /></span>}
+            {!BLIND && summary.mustAct && <span title={summary.mustAct.gloss}><Chip text={`必须此时行事 · ${summary.mustAct.text}`} color="var(--q-caution)" /></span>}
             {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
           </div>
 
