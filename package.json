@@ -1,7 +1,7 @@
 {
   "name": "qmdj-calendar",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.0.1",
   "type": "module",
   "description": "奇门遁甲 daily calendar — find good dates & hours. Vendored Zhirun engine, computed client-side in a Web Worker.",
   "scripts": {

@@ -55,6 +55,8 @@ export interface HourSummary {
   palaces: PalaceScore[];        // length 9, index-ordered
   counts: { prime: number; good: number };
   chartWarnings: string[];
+  /** display text per warning: 伏吟/反吟 name the ring that fired (星 / 门 / 星门, S0 p131) */
+  warningLabels: Record<string, string>;
   /** chart-scope 上格/下格 labels (天显时格 · 值符伏吟) — palace ones live on PalaceScore */
   chartGrades: GradedFormation[];
   chartBlocked: boolean;         // 五不遇时 → every palace blocked; excluded from search
@@ -78,6 +80,10 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
   if (rep.anyFuYin) chartWarnings.push('伏吟');
   if (rep.anyFanYin) chartWarnings.push('反吟');
   if (isHourStemTomb(chart)) chartWarnings.push('时干入墓');
+  const ring = (star: boolean, gate: boolean) => (star && gate ? '星门' : star ? '星' : '门');
+  const warningLabels: Record<string, string> = {};
+  if (rep.fuYin) warningLabels['伏吟'] = ring(rep.starFuYin, rep.gateFuYin) + '伏吟';
+  if (rep.fanYin) warningLabels['反吟'] = ring(rep.starFanYin, rep.gateFanYin) + '反吟';
 
   // chart-scope grades (§2b). Checked rule-by-rule rather than via a second
   // evaluateChart sweep — search calls this for every 时辰 in its range.
@@ -106,6 +112,7 @@ export function computeHourSummary(chart: Chart, profile: ScoreProfile = { kind:
     palaces,
     counts: { prime, good },
     chartWarnings,
+    warningLabels,
     chartGrades,
     chartBlocked,
     hourRoleFavour: veryPoor ? null : hourRoleFavour(hourStem, rep),
