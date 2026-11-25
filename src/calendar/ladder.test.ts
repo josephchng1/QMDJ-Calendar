@@ -101,10 +101,10 @@ describe('五不遇时 — the ten-entry table, exactly 1 时辰 in 12', () => {
 describe('§3.2 demotions — one band each, applied once, stacking', () => {
   it('门迫 alone drops 大吉 → 吉', () => expect(band(ev({ menGong: '迫' })).band).toBe('good'));
   it('空亡 alone drops 大吉 → 吉', () => expect(band(ev({ kongWang: true })).band).toBe('good'));
-  it('both drop two: 大吉 → 不吉 (default reading)', () =>
+  it('both drop two: 大吉 → 不吉 (门迫 to 吉, then 空亡)', () =>
     expect(band(ev({ menGong: '迫', kongWang: true })).band).toBe('plain'));
-  it('门迫 alone drops 吉 → 不吉 (得门不得奇)', () =>
-    expect(band(ev({ hasQi: false, menGong: '迫' })).band).toBe('plain'));
+  it('门迫 never takes a 吉门 below 吉 (得门不得奇 stays 吉)', () =>
+    expect(band(ev({ hasQi: false, menGong: '迫' })).band).toBe('good'));
   it('no cause drops twice — each reason appears once', () => {
     for (const over of [{ menGong: '迫' as const }, { kongWang: true }]) {
       const r = band(ev(over));

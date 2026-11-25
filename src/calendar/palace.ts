@@ -251,8 +251,11 @@ export function assignBand(ev: PalaceEval, p: Palace, hour: HourCtx, profile: Sc
   if (hasGate && ['休', '囚', '死'].includes(ev.strength.gate ?? '')) {
     band = demote(band); reasons.push('吉门逢休囚 — 无力');
   }
-  if (hasGate && ev.menGong === '迫') {   // S0(p131) 吉门被迫吉不就
-    band = demote(band); reasons.push('门迫 — 吉门剋宫，吉不就');
+  // S0(p131) 吉门被迫吉不就. Still usable, just weaker: 大吉 → 吉, never below 吉
+  // (practitioner ruling, 2026-11-25).
+  if (hasGate && ev.menGong === '迫') {
+    if (band === 'prime') band = 'good';
+    reasons.push('门迫 — 吉门剋宫，吉不就（仍可用）');
   }
   if (ev.kongWang) {                      // practitioner ruling, 2026-11-25
     band = demote(band); reasons.push('空亡 — 事不落实');
