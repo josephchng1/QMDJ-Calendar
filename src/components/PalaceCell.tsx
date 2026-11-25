@@ -40,6 +40,12 @@ const NUM: Record<number, string> = {
 //     palace number (BL), 天/地盘 (BR)
 //   • colour of the tint + score follows the SCORE (§6.6); formations are NOT
 //     drawn in the box yet (pending Joe).
+/** 不用 look, shared by the palace box, hour rows and search rows: dimmed + hatched, no red outline */
+export const BLOCKED_STYLE = {
+  opacity: 0.6,
+  backgroundImage: 'repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,0.05) 5px 6px)',
+};
+
 export function PalaceCell({
   palace, score, focused, onClick, hourStem,
 }: {
@@ -94,10 +100,7 @@ export function PalaceCell({
         border: `1px solid ${focused ? 'var(--gold-dim)' : 'var(--border)'}`,
         borderRadius: 10,
         boxShadow: focused ? '0 0 0 1px var(--gold-dim)' : undefined,
-        opacity: blocked ? 0.6 : 1,
-        backgroundImage: blocked
-          ? 'repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,0.05) 5px 6px)'
-          : undefined,
+        ...(blocked ? BLOCKED_STYLE : null),
       }}
     >
       {/* top corners: score (TL) · 符/使/空/马 (TR) */}

@@ -17,7 +17,7 @@ const CATEGORIES: { key: string; label: string; sub: string; rules: PatternRule[
   { key: 'xiong', label: '凶格', sub: '天地干凶', rules: [...PATTERNS_INAUSPICIOUS, ...PATTERNS_GENG_CONTEXT] },
 ];
 
-const TIER_LABEL: Record<Tier, string> = {
+export const TIER_LABEL: Record<Tier, string> = {
   'supreme-auspicious': '大吉', 'auspicious': '吉', 'minor-auspicious': '小吉', 'neutral': '平',
   'conditional': '门吉则吉', 'minor-inauspicious': '小凶', 'inauspicious': '凶', 'supreme-inauspicious': '大凶',
 };

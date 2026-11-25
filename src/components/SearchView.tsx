@@ -8,11 +8,24 @@ import { shichenWindow } from '../calendar/bands.ts';
 import { V2_BAND_COLOR, V2_BAND_LABEL } from '../calendar/bandsV2.ts';
 import { DIRECTION_LABEL } from '../calendar/direction.ts';
 import { GradeChips } from './PalaceReasons.tsx';
-import type { ApplicationTag } from '../calendar/data/patterns.ts';
+import { BLOCKED_STYLE } from './PalaceCell.tsx';
+import { TIER_WEIGHTS, type ApplicationTag, type Tier } from '../calendar/data/patterns.ts';
+import { TIER_LABEL } from './PatternsPanel.tsx';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const RANGES = [30, 60, 90, 180];
-const FORMATIONS = [...ALL_PATTERNS].sort((a, b) => a.name.localeCompare(b.name));
+// best → worst, so the good 格局 sit at the top of both pickers
+const FORMATIONS = [...ALL_PATTERNS].sort((a, b) => TIER_WEIGHTS[b.tier] - TIER_WEIGHTS[a.tier] || a.name.localeCompare(b.name));
+const TIER_GROUPS = [...new Set(FORMATIONS.map((p) => p.tier))];
+
+function FormationOptions({ en }: { en?: boolean }) {
+  return <>{TIER_GROUPS.map((t: Tier) => (
+    <optgroup key={t} label={TIER_LABEL[t]}>
+      {FORMATIONS.filter((p) => p.tier === t).map((p) =>
+        <option key={p.id} value={p.id}>{p.name}{en ? ` · ${p.nameEn}` : ''}</option>)}
+    </optgroup>
+  ))}</>;
+}
 const NAME_BY_ID = Object.fromEntries(ALL_PATTERNS.map((p) => [p.id, p.name]));
 
 export function SearchView({ options, onOpenSlot, onReset }: {
@@ -35,7 +48,7 @@ export function SearchView({ options, onOpenSlot, onReset }: {
   const [allowWuBuYu, setAllowWuBuYu] = useState(false);
   const [query, setQuery] = useState<SearchQuery | null>(null);
 
-  const { result, loading } = useSearch(query);
+  const { result, loading, error } = useSearch(query);
   const roleAware = ACTIVITY_PRESETS[activity].roleAware;
 
   const run = () => {
@@ -111,7 +124,7 @@ export function SearchView({ options, onOpenSlot, onReset }: {
             格局
             <select className="field px-3 py-2 text-sm" value={formationId}
                     onChange={(e) => setFormationId(e.target.value)}>
-              {FORMATIONS.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.nameEn}</option>)}
+              <FormationOptions en />
             </select>
           </label>
         )}
@@ -146,7 +159,8 @@ export function SearchView({ options, onOpenSlot, onReset }: {
       <div className="panel p-4 flex flex-col gap-2" style={{ minHeight: 200 }}>
         {!query && <Hint text="设定条件后按「搜索」，列出区间内的吉时。" />}
         {loading && <Hint text="扫描各日时辰中…" />}
-        {result && !loading && (
+        {error && !loading && <Hint text={`搜索出错：${error}。请再按「搜索」。`} />}
+        {result && !loading && !error && (
           <>
             <div className="text-xs flex items-baseline gap-2" style={{ color: 'var(--text-dim)' }}>
               <span>共扫描 {result.scanned} 时辰 · 列出 {result.slots.length}</span>
@@ -170,7 +184,7 @@ function SlotRow({ slot, rank, onClick }: { slot: SlotResult; rank: number; onCl
   return (
     <button onClick={onClick}
             className="cell w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-left"
-            style={{ background: 'var(--bg-cell-2)', border: `1px solid ${slot.blocked ? 'var(--q-bad)' : 'var(--border)'}` }}>
+            style={{ background: 'var(--bg-cell-2)', border: '1px solid var(--border)', ...(slot.blocked ? BLOCKED_STYLE : null) }}>
       <span className="text-xs w-6 tabular-nums" style={{ color: 'var(--text-dim)' }}>{rank}</span>
       <span className="swatch" style={{ background: c }} />
       <span className="text-sm tabular-nums" style={{ color: 'var(--text)' }}>
@@ -205,7 +219,7 @@ function FormationPicker({ label, color, chosen, onAdd, onRemove }: {
       <select className="field px-3 py-2 text-sm" value=""
               onChange={(e) => { if (e.target.value) onAdd(e.target.value); }}>
         <option value="">＋ 添加格局…</option>
-        {FORMATIONS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        <FormationOptions />
       </select>
       {chosen.length > 0 && (
         <div className="flex flex-wrap gap-1">
