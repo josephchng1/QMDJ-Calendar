@@ -132,10 +132,9 @@ export const isGongPo = (door: string, p: number): boolean => menGongRelation(do
 
 // ─── §7.6 伏吟 / 反吟 — S0(p131): 星伏吟、门伏吟、值符伏吟 (and the 反吟 trio) ───
 // Two rigid rings rotate independently: the star ring (stars + 天盘 stems, led by the
-// 值符) and the gate ring (led by the 值使). Each is checked on its own; the hour is
-// 伏吟 if EITHER ring sits at home, 反吟 if either lands on the 对冲 palace.
-// (Supersedes the 2026-07-29 star-only reading: p131 defines 门伏吟/门反吟 and singles
-// out 门反吟 as 更为不利 — Joe, 2026-11-25.)
+// 值符) and the gate ring (led by the 值使). Both are reported, but the hour is 伏吟 /
+// 反吟 on the STAR ring only: 门伏吟/门反吟 (p131) are ignored for the verdict —
+// practitioner ruling, 2026-11-26 (Joe). The gate flags stay for labels and reports.
 const STAR_HOME: Record<string, number> = {
   天蓬: 1, 天芮: 2, 天冲: 3, 天辅: 4, 天禽: 5, 天心: 6, 天柱: 7, 天任: 8, 天英: 9,
 };
@@ -145,7 +144,7 @@ export const GATE_HOME: Record<string, number> = {
 export interface Repetition {
   starFuYin: boolean; starFanYin: boolean;
   gateFuYin: boolean; gateFanYin: boolean;
-  fuYin: boolean; fanYin: boolean;         // either ring
+  fuYin: boolean; fanYin: boolean;         // star ring only (2026-11-26)
   anyFuYin: boolean; anyFanYin: boolean;   // kept for existing callers (= fuYin / fanYin)
 }
 export function repetition(board: Board): Repetition {
@@ -156,7 +155,7 @@ export function repetition(board: Board): Repetition {
   };
   const star = ring(STAR_HOME[board.zhiFuStar], board.zhiFuDisplayPalace);
   const gate = ring(GATE_HOME[board.zhiShiGate], board.zhiShiDisplayPalace);
-  const fuYin = star.fu || gate.fu, fanYin = star.fan || gate.fan;
+  const fuYin = star.fu, fanYin = star.fan;
   return {
     starFuYin: star.fu, starFanYin: star.fan, gateFuYin: gate.fu, gateFanYin: gate.fan,
     fuYin, fanYin, anyFuYin: fuYin, anyFanYin: fanYin,

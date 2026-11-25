@@ -59,7 +59,7 @@ export function HourRow({
         )}
         {summary.chartWarnings.filter((w) => w !== '五不遇时').map((w) => (
           <span key={w} className="text-[10px] px-1.5 py-0.5 rounded"
-                style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{w}</span>
+                style={{ color: 'var(--q-bad)', border: '1px solid var(--border)' }}>{summary.warningLabels[w] ?? w}</span>
         ))}
         {isBest && !blocked && !BLIND && <span className="text-[10px]" style={{ color: 'var(--gold)' }}>★ 今日最佳</span>}
       </div>
