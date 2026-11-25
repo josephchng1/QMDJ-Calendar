@@ -157,7 +157,8 @@ function repetitionVerdict(
     if (drop > out.drop) { out.drop = drop; out.reason = reason; }
   };
   if (rep.fuYin && !hour.tianXian) {            // 天显时: 伏吟一般不凶 (p125, p131)
-    // 最凶 — default reading: the palaces where these sit (p131).
+    // 最凶 — default reading: the palaces where these sit (p131). 死门加死门 needs the gates
+    // at home too, so it applies only in a star-伏吟 hour that is also 门伏吟.
     const worst = (rep.starFuYin && p.palace === 1 && p.stars.includes('天蓬'))
       || (rep.gateFuYin && p.palace === 2 && p.gate === '死门')
       || (hour.xunShouYi === '辛' && p.tianPanStems.includes('辛') && p.diPanStem === '辛');
@@ -165,13 +166,9 @@ function repetitionVerdict(
     else if (rescue.gate || rescue.jiGe) harsher(null, 1, '伏吟 — 遇吉门吉格为有救，降一等');
     else harsher('伏吟无救', 0, '');
   }
-  if (rep.starFanYin) {
+  if (rep.fanYin) {                              // star ring; 门反吟 ignored (2026-11-26)
     if (rescue.qi || rescue.gate) harsher(null, 1, '反吟 — 遇三奇或吉门为有救，降一等');
     else harsher('反吟无救', 0, '');
-  }
-  if (rep.gateFanYin) {
-    if (rescue.qi || rescue.gate) harsher(null, 2, '门反吟 — 更为不利，降两等');
-    else harsher('门反吟无救', 0, '');
   }
   return out;
 }

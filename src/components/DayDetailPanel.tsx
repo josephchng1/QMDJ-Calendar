@@ -128,7 +128,7 @@ export function DayDetailPanel({
             {!BLIND && roleText && <Chip text={`宜为${roleText}`} color="var(--gold)" />}
             {emergency.length > 0 && <Chip text={`急则从神：${emergency.join('、')}`} color="var(--q-caution)" />}
             {!BLIND && summary.mustAct && <span title={summary.mustAct.gloss}><Chip text={`必须此时行事 · ${summary.mustAct.text}`} color="var(--q-caution)" /></span>}
-            {summary.chartWarnings.map((w) => <Chip key={w} text={w} color="var(--q-bad)" />)}
+            {summary.chartWarnings.map((w) => <Chip key={w} text={summary.warningLabels[w] ?? w} color="var(--q-bad)" />)}
           </div>
 
           <PalaceGrid board={chart.board} scores={summary.palaces} hourStem={hourStem} />

@@ -164,13 +164,11 @@ describe('伏吟 / 反吟 — star ring (2026-07-29, validated by Joe) + gate ri
   it('辰时 戊辰 = 伏吟', () => {
     expect(rep(4).fuYin).toBe(true);
   });
-  it('未时 辛未 / 酉时 癸酉: star ring neither; the hour flag = star OR gate ring', () => {
+  it('未时 辛未 / 酉时 癸酉 = neither: the gate ring is reported but ignored (2026-11-26)', () => {
+    expect([rep(7).gateFanYin, rep(9).gateFuYin]).toEqual([true, true]);
     for (const bi of [7, 9]) {
-      const r = rep(bi);
-      expect(r.starFuYin).toBe(false);
-      expect(r.starFanYin).toBe(false);
-      expect(r.fuYin).toBe(r.starFuYin || r.gateFuYin);
-      expect(r.fanYin).toBe(r.starFanYin || r.gateFanYin);
+      expect(rep(bi).fuYin).toBe(false);
+      expect(rep(bi).fanYin).toBe(false);
     }
   });
 });
